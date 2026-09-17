@@ -1,0 +1,64 @@
+#!/bin/sh
+
+set -eu
+
+echo "EntraNHI: running pre-commit security checks..."
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+if [ -z "$staged_files" ]; then
+    exit 0
+fi
+
+dangerous_name=0
+
+while IFS= read -r file; do
+    case "$file" in
+        .env|.env.*|*/.env|*/.env.*|\
+        secrets.json|*/secrets.json|\
+        appsettings.Local.json|*/appsettings.Local.json|\
+        appsettings.*.Local.json|*/appsettings.*.Local.json|\
+        *.pfx|*.p12|*.key|*.pem)
+            echo "BLOCKED: sensitive file must not be committed: $file"
+            dangerous_name=1
+            ;;
+    esac
+done <<EOF
+$staged_files
+EOF
+
+if [ "$dangerous_name" -ne 0 ]; then
+    echo "Commit blocked by EntraNHI security policy."
+    exit 1
+fi
+
+private_key_found=0
+
+while IFS= read -r file; do
+    # The hook contains its own detection signature.
+    # Do not scan the scanner against itself.
+    if [ "$file" = ".githooks/pre-commit" ]; then
+        continue
+    fi
+
+    # Inspect the exact staged blob, not the working-tree copy.
+    if git cat-file -e ":$file" 2>/dev/null; then
+        if git show ":$file" 2>/dev/null |
+            grep -E 'BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY|BEGIN PRIVATE KEY' \
+            >/dev/null 2>&1
+        then
+            echo "BLOCKED: staged file appears to contain private-key material: $file"
+            private_key_found=1
+        fi
+    fi
+done <<EOF
+$staged_files
+EOF
+
+if [ "$private_key_found" -ne 0 ]; then
+    echo "Commit blocked by EntraNHI security policy."
+    exit 1
+fi
+
+echo "EntraNHI: pre-commit security checks passed."
+exit 0

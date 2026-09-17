@@ -1,0 +1,20 @@
+# Normalize text files in the Git repository.
+* text=auto eol=lf
+
+# Windows scripts require CRLF.
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.pfx binary
+*.p12 binary
