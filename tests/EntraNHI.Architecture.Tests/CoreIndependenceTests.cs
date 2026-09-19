@@ -51,7 +51,7 @@ public sealed class CoreIndependenceTests
     [TestMethod]
     public void CoreAssemblyDoesNotReferenceForbiddenFrameworkAssemblies()
     {
-        Assembly coreAssembly = typeof(EntraNHI.Core.Class1).Assembly;
+        Assembly coreAssembly = typeof(EntraNHI.Core.AssessmentState).Assembly;
 
         string[] forbiddenReferences = coreAssembly
             .GetReferencedAssemblies()
