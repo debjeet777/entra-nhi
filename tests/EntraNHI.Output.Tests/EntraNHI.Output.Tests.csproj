@@ -1,0 +1,16 @@
+﻿<Project Sdk="MSTest.Sdk/4.0.2">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EntraNHI.Output\EntraNHI.Output.csproj" />
+    <ProjectReference Include="..\..\src\EntraNHI.Core\EntraNHI.Core.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TestingExtensionsProfile>None</TestingExtensionsProfile>
+  </PropertyGroup>
+
+</Project>

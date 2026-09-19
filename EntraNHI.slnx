@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EntraNHI.Application/EntraNHI.Application.csproj" />
+    <Project Path="src/EntraNHI.Cli/EntraNHI.Cli.csproj" />
+    <Project Path="src/EntraNHI.Core/EntraNHI.Core.csproj" />
+    <Project Path="src/EntraNHI.Infrastructure.Graph/EntraNHI.Infrastructure.Graph.csproj" />
+    <Project Path="src/EntraNHI.Output/EntraNHI.Output.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EntraNHI.Application.Tests/EntraNHI.Application.Tests.csproj" />
+    <Project Path="tests/EntraNHI.Architecture.Tests/EntraNHI.Architecture.Tests.csproj" />
+    <Project Path="tests/EntraNHI.Cli.Tests/EntraNHI.Cli.Tests.csproj" />
+    <Project Path="tests/EntraNHI.Core.Tests/EntraNHI.Core.Tests.csproj" />
+    <Project Path="tests/EntraNHI.Infrastructure.Graph.Tests/EntraNHI.Infrastructure.Graph.Tests.csproj" />
+    <Project Path="tests/EntraNHI.Output.Tests/EntraNHI.Output.Tests.csproj" />
+  </Folder>
+</Solution>
