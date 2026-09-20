@@ -45,7 +45,7 @@ Core rule evaluation and deterministic assessment logic MUST be testable without
 
 ### 1.7 Capability-aware testing
 
-Tests MUST verify behavior across different capability states (available, unavailable-authorization, unavailable-licensing, unsupported, failed, not-applicable). [INV-07, CAP-001, CAP-002]
+Tests MUST verify behavior across different capability states (available, unavailable-authorization, unavailable-licensing, unsupported, failed). Applicability is tested separately through each rule's deterministic applicability predicate and `NOT_APPLICABLE` result. [INV-07, CAP-001, CAP-002]
 
 ### 1.8 Failure-state testing as a first-class requirement
 
@@ -224,7 +224,7 @@ Define the conceptual test layers and their responsibilities. Framework selectio
 | **Purpose** | Verify correct behavior when components fail |
 | **Test boundary** | Individual component failure propagation through the pipeline |
 | **Appropriate inputs** | Injected failures at each component boundary |
-| **Expected outputs/assertions** | Failure remains visible; no false PASS; correct NOT_EVALUATED/ERROR production; no silent success |
+| **Expected outputs/assertions** | Failure and applicable capability/completeness context remain visible; no false PASS or tenant-security FAIL; any RuleEvaluation state follows the applicable rule semantics; no silent success |
 | **Prohibited dependencies** | Live APIs, real tenant data |
 | **Security relevance** | INV-14 failure transparency, false PASS prevention, failure visibility |
 | **Deterministic/repeatability** | Fully deterministic with injected failures |
@@ -250,7 +250,7 @@ Required synthetic data types:
 | Fake credential metadata | Non-secret metadata containing no actual credential material (synthetic key IDs, synthetic thumbprints, synthetic timestamps) |
 | Fake permission/access relationships | Fabricated application permissions, delegated permissions, role assignments |
 | Synthetic graph topology | Fabricated identity-to-identity relationships, application-to-service-principal links |
-| Fake capability states | Available, unavailable-authorization, unavailable-licensing, unsupported, failed, not-applicable |
+| Fake capability states | Available, unavailable-authorization, unavailable-licensing, unsupported, failed; rule applicability is represented separately |
 | Fake collection failures | Authentication denial, authorization failure, service unavailability, throttling, malformed response |
 | Fake provider errors | Structured error responses simulating provider-side failures |
 | Malformed/untrusted strings | HTML payloads, ANSI escape sequences, Unicode edge cases, control characters, oversized strings, path-traversal strings |
@@ -296,7 +296,7 @@ Any future captured provider fixture MUST undergo explicit security review and s
 | Authentication-related upstream failure | Authentication failure propagated; collection does not proceed silently |
 | Provider/service failure | Capability state = failed; structured error; no false empty success |
 | Throttling/retry-relevant conditions | Bounded retry behavior; capability state reflects exhaustion if retry budget exceeded |
-| Malformed provider responses | Structured normalization-input validation failure; ERROR or NOT_EVALUATED downstream |
+| Malformed provider responses | Structured normalization-input validation failure; context preserved; no direct state assignment or silent PASS/tenant-security FAIL |
 | Unexpected/missing properties | Missing properties preserved as absent semantics; not silently filled |
 | Duplicate observations | Deterministic deduplication; single canonical record produced |
 | Pagination behavior | Multi-page results collected completely; partial collection visible if interrupted |
@@ -331,8 +331,8 @@ Use mocks/fakes/synthetic provider contracts. Do not invent exact Graph payload 
 | --- | --- |
 | Valid runtime access context | Authorized context established; collection proceeds |
 | Authentication failure | Explicit failure category; no successful assessment |
-| Authorization denial | Capability state = unavailable-authorization; NOT_EVALUATED for dependent rules |
-| Insufficient capability | Capability state reflects specific limitation; NOT_EVALUATED |
+| Authorization denial | Capability state = unavailable-authorization; affected context preserved; applicable rule semantics determine any evaluation state |
+| Insufficient capability | Capability state reflects the specific limitation; applicable rule semantics determine any evaluation state |
 | Wrong tenant | Tenant-context mismatch; fails safely and visibly |
 | Tenant mismatch | Authentication context does not match expected tenant; explicit failure |
 | Expired/invalid runtime context | Access context unusable; explicit failure |
@@ -365,7 +365,7 @@ Exact OAuth/OIDC flows and exact Microsoft permissions remain TBD.
 | --- | --- |
 | Valid synthetic observations | Correctly normalized domain records with provenance |
 | Missing optional fields | Absent semantics preserved per domain-model null/unknown/absent semantics |
-| Missing required semantic inputs | Normalization failure; structured error; NOT_EVALUATED or ERROR downstream |
+| Missing required semantic inputs | Normalization failure; structured diagnostic and context preserved; no direct state assignment or silent PASS/tenant-security FAIL |
 | Malformed values | Validation failure; structured error; no silent inference |
 | Duplicate provider objects | Deterministic deduplication; single canonical record |
 | Conflicting observations | Conflict remains detectable; not silently resolved by heuristic inference |
@@ -436,9 +436,9 @@ This is a critical section. The rule-state matrix and verification requirements 
 | --- | --- | --- |
 | **PASS** | Requires affirmative rule conditions satisfied; requires sufficient input completeness; cannot result merely because evidence is absent | PASS occurs only when rule conditions are affirmatively met; PASS requires the specific input completeness defined by the rule; absence of data alone does not produce PASS |
 | **FAIL** | Requires deterministic affirmative evidence; cannot result solely from missing data; cannot result solely from authentication/system failure | FAIL occurs only when the rule's failure predicate is deterministically satisfied; FAIL requires traceable evidence; missing data alone does not produce FAIL; system error alone does not produce FAIL |
-| **NOT_EVALUATED** | Correctly represents inability to evaluate when required capability/input is unavailable according to rule semantics | NOT_EVALUATED produced when required capability is unavailable; NOT_EVALUATED produced when required input is missing; NOT_EVALUATED carries structured reason identifying the gap |
+| **NOT_EVALUATED** | Correctly represents inability to evaluate when required capability/input is unavailable according to the applicable rule semantics | NOT_EVALUATED is produced only where the rule's documented unavailable-input semantics require it; it carries structured reason identifying the gap; no universal capability-state mapping is assumed |
 | **NOT_APPLICABLE** | Distinct from NOT_EVALUATED; represents a rule that genuinely does not apply to the identity type or context | NOT_APPLICABLE produced when applicability predicate returns false; NOT_APPLICABLE carries structured reason; NOT_APPLICABLE is not used to hide unsupported functionality |
-| **ERROR** | Represents evaluation/system failure; remains distinct from tenant security FAIL | ERROR produced on evaluation exception or invalid state; ERROR carries structured reason; ERROR is not converted to FAIL to simplify reporting |
+| **ERROR** | Represents failure during a legitimately established rule evaluation; remains distinct from tenant security FAIL | ERROR is produced on an evaluation exception where applicable rule semantics require it; ERROR carries structured reason; integrity/construction failure does not fabricate a RuleEvaluation; ERROR is not converted to FAIL to simplify reporting |
 
 ### 8.2 Determinism verification
 
@@ -469,12 +469,12 @@ These are release-critical semantic security tests.
 
 | Attack path | Test expectation |
 | --- | --- |
-| Incomplete collection -> PASS | Incomplete collection produces NOT_EVALUATED or ERROR, not PASS |
-| Authorization denial -> PASS | Authorization denial produces NOT_EVALUATED, not PASS |
-| Unsupported capability -> PASS | Unsupported capability produces NOT_EVALUATED or NOT_APPLICABLE, not PASS |
-| Collection error -> PASS | Collection error produces ERROR or NOT_EVALUATED, not PASS |
-| Normalization failure -> PASS | Normalization failure produces ERROR, not PASS |
-| Graph failure -> PASS | Graph failure affecting required input produces ERROR, not PASS |
+| Incomplete collection -> PASS | Incomplete collection remains explicit; applicable rule semantics determine any evaluation state; it does not silently produce PASS |
+| Authorization denial -> PASS | Authorization denial and affected capability context remain explicit; applicable rule semantics determine any evaluation state; it does not produce PASS from absent observations |
+| Unsupported capability -> PASS | Unsupported capability remains distinct from rule applicability; applicable rule semantics determine any evaluation state; it does not silently produce PASS |
+| Collection error -> PASS | Collection error remains explicit; applicable rule semantics or run-level handling determine the result; it does not silently produce PASS |
+| Normalization failure -> PASS | Normalization failure remains explicit; integrity/construction failure produces no fabricated RuleEvaluation and does not silently produce PASS |
+| Graph failure -> PASS | Graph failure remains explicit; integrity/construction failure produces no fabricated RuleEvaluation and does not silently produce PASS |
 | Resource exhaustion -> successful assessment | Resource exhaustion produces visible failure, not successful assessment |
 | Cancellation -> successful assessment | Cancellation produces visible cancellation state, not successful assessment |
 | Missing evidence -> PASS | Missing evidence for PASS prevents PASS emission; PASS requires evidence |
@@ -484,18 +484,18 @@ These are release-critical semantic security tests.
 
 | Incorrect path | Test expectation |
 | --- | --- |
-| Authentication failure -> tenant FAIL | Authentication failure produces ERROR or NOT_EVALUATED, not tenant FAIL |
-| Authorization denial -> tenant FAIL | Authorization denial produces NOT_EVALUATED, not tenant FAIL |
-| Unsupported capability -> tenant FAIL | Unsupported capability produces NOT_EVALUATED or NOT_APPLICABLE, not tenant FAIL |
+| Authentication failure -> tenant FAIL | Authentication failure remains an explicit operational failure; applicable semantics determine any evaluation state; it does not become tenant FAIL |
+| Authorization denial -> tenant FAIL | Authorization denial remains explicit capability/failure context; applicable rule semantics determine any evaluation state; it does not become tenant FAIL |
+| Unsupported capability -> tenant FAIL | Unsupported capability remains explicit and distinct from applicability; applicable rule semantics determine any evaluation state; it does not become tenant FAIL |
 | Missing data alone -> tenant FAIL | Missing data alone does not produce FAIL; FAIL requires affirmative evidence |
-| System error -> tenant FAIL | System error produces ERROR, not tenant FAIL |
+| System error -> tenant FAIL | System error remains explicit; applicable evaluation semantics or run-level handling determine the result; it does not become tenant FAIL |
 
 ### 9.3 Verification requirements
 
 Tests MUST verify:
 
-- Every false-PASS attack path produces the correct non-PASS state
-- Every false-FAIL attack path produces the correct non-FAIL state
+- Every false-PASS attack path produces a fail-safe non-PASS outcome
+- Every false-FAIL attack path produces a fail-safe non-FAIL outcome
 - ERROR remains distinct from FAIL at every boundary
 - NOT_EVALUATED remains distinct from PASS
 - These tests are executed against the full pipeline, not just individual components
@@ -699,7 +699,7 @@ Define an explicit adversarial suite corresponding to the threat model. Each tes
 | Provenance fabrication | Threat 13 (Evidence fabrication), Threat 14 (Provenance loss) | Attempt to inject fabricated provenance; verify rejection |
 | Evidence manipulation | Threat 13 | Attempt to modify evidence references; verify integrity |
 | Rule/config tampering | Threat 15 | Inject modified rule configuration; verify detection and safe failure |
-| False PASS | Threat 10, 11 (Incomplete collection, authorization denial) | Execute every false-PASS attack path; verify correct non-PASS state |
+| False PASS | Threat 10, 11 (Incomplete collection, authorization denial) | Execute every false-PASS attack path; verify a fail-safe non-PASS outcome |
 | False FAIL | Threat 12 (Auth failure -> tenant FAIL) | Execute every false-FAIL attack path; verify correct non-FAIL state |
 | Renderer state reinterpretation | Threat 16 (Renderer changing security meaning) | Verify renderers cannot alter evaluation state |
 | XSS | Threat 17 (HTML/XSS injection) | Inject HTML/JS payloads into tenant strings; verify safe encoding |
@@ -856,9 +856,9 @@ A release MUST NOT be considered security-verified merely because it compiles. B
 | Tenant isolation | VERIFIED that cross-tenant data mixing does not occur at any pipeline stage |
 | Secret exclusion | VERIFIED that no credential material enters output, logs, evidence, or normalized state |
 | Deterministic rule states | VERIFIED that identical inputs produce identical evaluation outcomes |
-| False-PASS prevention | VERIFIED that every false-PASS attack path produces correct non-PASS state |
-| False-FAIL prevention | VERIFIED that every false-FAIL attack path produces correct non-FAIL state |
-| Capability-aware semantics | VERIFIED that missing capability produces NOT_EVALUATED, not PASS or FAIL |
+| False-PASS prevention | VERIFIED that every false-PASS attack path produces a fail-safe non-PASS outcome |
+| False-FAIL prevention | VERIFIED that every false-FAIL attack path produces a fail-safe non-FAIL outcome |
+| Capability-aware semantics | VERIFIED that missing capability remains explicit, is distinct from applicability, and is handled by documented rule semantics without automatically producing PASS or FAIL |
 | Provenance/evidence integrity | VERIFIED that evidence traces to source observations; no fabrication |
 | Renderer non-authority | VERIFIED that output renderers cannot alter evaluation state |
 | Output injection resistance | VERIFIED that tenant strings are safely encoded in all output formats |
@@ -885,14 +885,14 @@ Every architecture invariant (INV-01 through INV-16) MUST have at least one corr
 | INV-04 Normalized domain boundary | Verify provider-specific types do not enter rule contracts; normalization tests with type-confusion inputs | Unit, component, contract, adversarial |
 | INV-05 Explicit evaluation states | Verify exactly five terminal states; no silent coercion of missing capability into PASS or FAIL | Unit, component, rule-state matrix |
 | INV-06 Evidence traceability | Verify PASS/FAIL carry evidence references; non-terminal states carry structured reason | Unit, component, findings/evidence tests |
-| INV-07 Capability awareness | Verify capability state propagation; verify missing capability produces NOT_EVALUATED | Unit, component, integration, capability-state tests |
+| INV-07 Capability awareness | Verify capability state propagation; verify missing capability is distinct from applicability and follows documented rule semantics | Unit, component, integration, capability-state tests |
 | INV-08 Least privilege | Verify authentication requests minimum scopes; no dynamic privilege expansion | Authentication/authorization tests, security tests |
 | INV-09 Secret exclusion | Verify no credential material in output, logs, evidence, normalized state; inject synthetic secrets | Security, adversarial, output tests |
 | INV-10 Tenant boundary preservation | Verify cross-tenant mixing prevented at every pipeline stage; tenant-isolation tests | Unit, component, integration, tenant-isolation tests |
 | INV-11 Provenance preservation | Verify provenance traces from source through normalization through graph through findings | Unit, component, contract, provenance tests |
 | INV-12 Core/output separation | Verify renderers cannot alter evaluation state; verify all five states preserved | Output, renderer, contract tests |
 | INV-13 AI non-authority | Verify AI cannot determine or modify verdicts; verify rule engine produces deterministic results without AI | Rule-engine, security, adversarial tests |
-| INV-14 Failure transparency | Verify failures produce ERROR/NOT_EVALUATED, never silent PASS; verify false-PASS attack paths | Failure-injection, false-PASS, security tests |
+| INV-14 Failure transparency | Verify failures and relevant context remain explicit; verify state selection follows applicable semantics or no RuleEvaluation is fabricated; verify no silent PASS or tenant-security FAIL | Failure-injection, false-PASS, security tests |
 | INV-15 No undocumented capability dependency | Verify rules reference documented properties only; verify no invented Graph endpoints/permissions | Unit, component, contract tests |
 | INV-16 Security-sensitive defaults | Verify secure defaults; verify no insecure fallback; verify weakening requires explicit opt-in | Configuration, authentication, security tests |
 

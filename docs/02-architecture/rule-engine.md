@@ -84,7 +84,7 @@ FAIL requires:
 - A deterministic failure predicate satisfied
 - Evidence and provenance references sufficient to explain the failure
 
-A collection, authentication, or system failure is not itself a tenant security FAIL unless a separate rule explicitly evaluates that condition as assessment data under a documented requirement. Infrastructure failures should normally remain NOT_EVALUATED or ERROR according to deterministic rule semantics.
+A collection, authentication, or system failure does not itself select an assessment state. Operational failures remain explicit and preserve relevant capability, completeness, and failure context. When the condition merely prevents assessment, the applicable evaluation and rule semantics, together with later failure-mapping mechanics, determine the legitimate handling, including whether a `RuleEvaluation` is produced and, if so, its state. A separate rule may explicitly evaluate the operational condition as assessment data under a documented requirement; that rule's normal deterministic semantics govern its state.
 
 ### 3.3 NOT_EVALUATED
 
@@ -132,13 +132,12 @@ This distinction is security-critical. Missing data is not evidence of failure; 
 
 ERROR represents failure of trustworthy rule execution, not a security failure of the assessed identity. ERROR must not be converted to FAIL merely to simplify reporting.
 
-Examples of conditions that should produce ERROR:
+After a valid rule/target evaluation context has been established, examples of conditions that may produce ERROR according to rule semantics include:
 
-- Invalid normalized input violating a required invariant
 - Rule execution exception
-- Inconsistent graph state that prevents evaluation
-- Invalid rule definition or configuration
 - Internal deterministic engine failure
+
+Invalid shared normalized state, inconsistent graph state, tenant-context mismatch, or invalid configuration that prevents trustworthy evaluation-context construction is an integrity/construction failure. Such a failure must be visible, must produce no fabricated `RuleEvaluation`, and is not automatically mapped to any of the five evaluation states. Exact fatal-versus-isolated handling remains TBD.
 
 ---
 
@@ -170,7 +169,7 @@ FAIL requires:
 - Deterministic failure predicate satisfied
 - Evidence and provenance references sufficient to explain the failure
 
-A collection, authentication, or system failure is not itself a tenant security FAIL unless a separate rule explicitly evaluates that condition as assessment data under a documented requirement. Infrastructure failures should normally remain NOT_EVALUATED or ERROR according to deterministic rule semantics.
+A collection, authentication, or system failure does not itself select an assessment state. Operational failures remain explicit and preserve relevant capability, completeness, and failure context. When the condition merely prevents assessment, the applicable evaluation and rule semantics and later failure-mapping mechanics determine the legitimate handling, including whether a `RuleEvaluation` is produced and, if so, its state. A separate rule may explicitly evaluate the operational condition as assessment data under a documented requirement; that rule's normal deterministic semantics govern its state. A failure that prevents evaluation-context construction produces no fabricated `RuleEvaluation`.
 
 ---
 
@@ -323,7 +322,7 @@ If a required capability is unavailable, the engine must not evaluate security p
 
 - If credential metadata capability is required but unavailable, do not evaluate credential absence as PASS.
 - If accountability capability is unavailable, do not interpret zero observed owners as confirmed no-owner state.
-- If AgentIdentity capability is unsupported, AgentIdentity-specific rules may become NOT_EVALUATED or NOT_APPLICABLE depending on the rule's documented applicability and capability semantics.
+- If AgentIdentity capability is unsupported, the rule's deterministic applicability predicate independently determines whether it applies; for an applicable rule, documented unavailable-input semantics determine the evaluation state.
 
 ### 11.3 No universal capability-to-state mapping
 
@@ -529,9 +528,9 @@ The following summarizes the conceptual pipeline:
 ```
 1.  Rule discovery / registration
 2.  Rule compatibility / version validation
-3.  Applicability evaluation -> NOT_APPLICABLE
-4.  Required-capability validation -> NOT_EVALUATED
-5.  Required-input validation -> NOT_EVALUATED
+3.  Applicability evaluation -> NOT_APPLICABLE when the deterministic predicate is false
+4.  Required-capability validation
+5.  Required-input validation
 6.  Deterministic evaluation
 7.  Evaluation-state assignment -> PASS / FAIL / ERROR
 8.  Evidence reference construction / handoff
@@ -539,7 +538,7 @@ The following summarizes the conceptual pipeline:
 10. Result aggregation
 ```
 
-Each rule passes through applicable stages. Early termination at any stage produces the appropriate evaluation state with structured diagnostic context.
+Each rule passes through applicable stages. Applicability is distinct from capability and input availability. When a legitimate evaluation context exists, the rule contract determines the appropriate state and structured diagnostic context; integrity/construction failures that prevent such a context produce no fabricated `RuleEvaluation`.
 
 ---
 
@@ -609,7 +608,7 @@ This section cross-references architecture invariants defined in `docs/02-archit
 | INV-10 | Tenant boundary preservation — single tenant per assessment; no cross-tenant identity correlation |
 | INV-11 | Provenance preservation — evidence references preserve source and collection context |
 | INV-13 | AI non-authority — AI/LLM must never determine or modify rule outcomes |
-| INV-14 | Failure transparency — failures produce ERROR or NOT_EVALUATED, never silent PASS |
+| INV-14 | Failure transparency — failures remain explicit and do not themselves select an assessment state; applicable semantics determine legitimate handling, including whether a RuleEvaluation results and, if so, its state; a separate documented rule may evaluate an operational condition as assessment data; never silent PASS or tenant-security FAIL |
 | INV-15 | No undocumented capability dependency — rules reference documented capabilities and properties only |
 | INV-16 | Security-sensitive defaults — configuration defaults favor assessment integrity |
 

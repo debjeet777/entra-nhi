@@ -296,7 +296,7 @@ Evidence from one tenant MUST NOT support an evaluation for another tenant.
 
 Cross-tenant evidence correlation is prohibited in V1.
 
-Tenant-context mismatch/contamination is an integrity failure and must fail safely and visibly. [INV-10]
+Tenant-context mismatch/contamination is an integrity/construction failure and must fail safely and visibly. It produces no fabricated `RuleEvaluation` and is not automatically mapped to any of the five evaluation states. Exact fatal-versus-isolated handling remains TBD. [INV-10]
 
 ---
 
@@ -414,6 +414,7 @@ If required evidence cannot be constructed:
 
 - do not silently emit a fully trustworthy PASS/FAIL representation
 - preserve the underlying `RuleEvaluation`
+- do not fabricate or replace a `RuleEvaluation`, and do not automatically map the integrity failure to an evaluation state
 - produce explicit diagnostic/integrity handling
 - fail safely according to future validated policy
 

@@ -33,7 +33,7 @@ The domain model distinguishes four data categories:
 
 | Category | Definition |
 | --- | --- |
-| **Observed** | Facts obtained directly from an approved documented source (e.g., Microsoft Graph response, Azure Resource Manager response, licensed telemetry). |
+| **Observed** | Facts obtained directly from an approved documented source (Microsoft Graph for V1, or a future explicitly enabled optional source such as Azure Resource Manager or licensed telemetry). Optional sources are not V1 dependencies. |
 | **Normalized** | Canonical representation of observed facts after translation into domain contracts. Normalized data preserves the semantic content of the observation without introducing undocumented properties. |
 | **Derived** | Deterministic relationships or classifications computed from normalized facts by explicitly defined logic. Derived values MUST NOT be represented as though they were directly observed. |
 | **Evaluation** | Rule outcomes, findings, and evidence produced later by the rule engine. Evaluation data is produced after normalization and graph construction are complete. |
@@ -52,7 +52,7 @@ The domain model MUST NOT use one generic null value to represent every missing-
 | **Unavailable** | Collection was attempted but the data was not accessible due to authorization, licensing, or service limitations. |
 | **Failed** | Collection was attempted but an error prevented retrieval. |
 | **Unsupported** | The source or current EntraNHI implementation does not support collecting this data. |
-| **Not applicable** | The concept does not apply to this identity kind (e.g., delegated permission grants for a identity kind that does not support delegated flows). |
+| **Structurally absent** | The documented source model does not expose the concept for this identity kind (e.g., delegated permission grants for an identity kind that does not support delegated flows). This observation semantic does not determine whether a rule applies. |
 
 Missing or unavailable data MUST NOT automatically imply a security FAIL. [INV-05, CAP-002]
 
@@ -115,7 +115,7 @@ The exact format is TBD.
 
 A structured reference identifying the documented external source object sufficiently for provenance. A source reference captures:
 
-- Source system or API family (e.g., Microsoft Graph, Azure Resource Manager).
+- Source system or API family (Microsoft Graph for V1, or a future explicitly enabled optional source such as Azure Resource Manager).
 - Source object type within that system.
 - Source object identifier as documented and exposed by the source.
 - Collection context (e.g., which API call or query produced this observation).
@@ -242,13 +242,12 @@ The model must be able to distinguish conceptually:
 | **Unavailable — licensing/service** | Data was not accessible because the required licensing tier or service capability is not present in the target environment. |
 | **Unsupported** | The current EntraNHI implementation does not support collecting this data. |
 | **Failed** | Collection was attempted but an error occurred. |
-| **Not applicable** | The capability or data point does not apply to this identity kind or assessment context. |
 
 Exact enum names and serialization are TBD.
 
 ### Rule engine interaction
 
-Capability state MUST be available to downstream deterministic rules so they can correctly choose among:
+Capability state MUST be available to downstream deterministic rules as input to evaluation. Rule applicability remains a separate determination made by each rule's deterministic applicability predicate. Capability state does not include `NotApplicable`, and there is no universal capability-state-to-evaluation-state mapping. A legitimate `RuleEvaluation` carries exactly one of:
 
 - PASS
 - FAIL
@@ -270,7 +269,7 @@ Each provenance record captures:
 
 | Concept | Description |
 | --- | --- |
-| **Source system** | The API family or source system from which the observation was collected (e.g., Microsoft Graph, Azure Resource Manager). |
+| **Source system** | The API family or source system from which the observation was collected (Microsoft Graph for V1, or a future explicitly enabled optional source such as Azure Resource Manager). |
 | **Source object reference** | The specific object or resource within the source system that was queried. |
 | **Collection operation/context** | The API call, query, or collection operation that produced the observation. |
 | **Assessment context** | The assessment run and tenant scope within which this observation was collected. |
@@ -331,7 +330,7 @@ During collection, credential metadata for an identity is not accessible due to 
   - Credential metadata: empty (no credential records present)
   - Credential collection capability state: `Unavailable — authorization`
 
-The absence of credential records is NOT interpreted as "no credentials exist." The capability state explicitly indicates that credential data was unavailable due to an authorization boundary. A downstream rule evaluating credential hygiene would resolve to `NOT_EVALUATED` with a structured reason referencing the authorization-limited capability state, NOT to `PASS` or `FAIL`.
+The absence of credential records is NOT interpreted as "no credentials exist." The capability state explicitly indicates that credential data was unavailable due to an authorization boundary. A downstream rule evaluating credential hygiene applies its documented unavailable-input behavior; the authorization-limited capability state alone does not universally determine an evaluation state and MUST NOT be treated as evidence for `PASS` or tenant-security `FAIL`.
 
 ---
 

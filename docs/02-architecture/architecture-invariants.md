@@ -71,7 +71,7 @@ Each invariant uses RFC 2119 / RFC 8174 normative language. MUST / MUST NOT = in
 
 **Rationale:** Capability awareness prevents false assessments from assuming uniform platform behavior across tenants with different licensing, configuration, and permission profiles.
 
-**Architectural consequence:** A capability detection mechanism MUST inform collectors and the rule engine. Rules MUST be gated on required capabilities. Gaps MUST produce NOT_EVALUATED, not FAIL. [CAP-001, CAP-002, CAP-003]
+**Architectural consequence:** A capability detection mechanism MUST inform collectors and the rule engine. Rules MUST be gated on required capabilities. Gaps MUST remain explicit and be handled according to the applicable rule semantics; they MUST NOT automatically produce PASS or FAIL. [CAP-001, CAP-002, CAP-003]
 
 ### INV-08 — Least privilege
 
@@ -127,7 +127,7 @@ Each invariant uses RFC 2119 / RFC 8174 normative language. MUST / MUST NOT = in
 
 **Rationale:** Transparent failure handling prevents silent data loss from being interpreted as a passing security posture.
 
-**Architectural consequence:** Error handling MUST surface failures through ERROR verdicts, NOT_EVALUATED states, or explicit error reporting. No failure path may result in a PASS or false-compliant outcome. [VERD-005, VERD-003, CAP-001]
+**Architectural consequence:** Error handling MUST preserve applicable capability, completeness, and failure context and surface failures explicitly. The applicable evaluation and rule semantics, together with later failure-mapping mechanics, determine the legitimate handling, including whether a `RuleEvaluation` is produced and, if so, its state. An operational condition may produce PASS or tenant-security FAIL only when a separate rule explicitly evaluates that condition as assessment data under a documented requirement; it MUST NOT do so through silent failure mapping. [VERD-005, VERD-003, CAP-001]
 
 ### INV-15 — No undocumented capability dependency
 
@@ -135,7 +135,7 @@ Each invariant uses RFC 2119 / RFC 8174 normative language. MUST / MUST NOT = in
 
 **Rationale:** Dependency on undocumented behavior creates fragile assessments that may break silently when Microsoft changes internal implementation details.
 
-**Architectural consequence:** All collected data MUST originate from documented Microsoft APIs. All rule logic MUST reference documented properties and behaviors. Where documentation is absent, NOT_EVALUATED MUST be used. [FR-004, CAP-004, CAP-005]
+**Architectural consequence:** All collected data MUST originate from documented Microsoft APIs. All rule logic MUST reference documented properties and behaviors. Where documentation is absent, the limitation MUST remain explicit and be handled according to the applicable evaluation and rule semantics; it MUST NOT be converted into an invented observation or silent PASS/FAIL. [FR-004, CAP-004, CAP-005]
 
 ### INV-16 — Security-sensitive defaults
 

@@ -32,7 +32,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | Asset | Sensitivity | Description |
 | --- | --- | --- |
 | Tenant directory/security assessment data | High | Identity metadata, permission grants/assignments, ownership/accountability relationships, identity relationships collected from the target tenant |
-| Authentication/access material | Critical | Access tokens, refresh tokens, client secrets, private keys, workload credentials (transient, in-memory only in V1) |
+| Authentication/access material | Critical | Access tokens, refresh tokens where used by a validated mechanism, client secrets, private keys, workload credentials; all are excluded from assessment artifacts, while exact caching/storage and in-memory protection remain deferred |
 | Normalized identity data | High | IdentityRecord, CredentialMetadata, PermissionRelationship, AccountabilitySubject, CapabilityState, Provenance after translation from provider-specific objects |
 | Identity graph | High | Deterministic projection of normalized domain model containing nodes, edges, capability states, and provenance references |
 | Rule definitions/configuration | Medium | Deterministic security rules, rule versions, evaluation predicates, required capabilities, applicability criteria |
@@ -104,7 +104,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | --- | --- |
 | **Threatened asset** | Tenant context; normalized domain data; identity graph; findings/evidence |
 | **Attack/failure path** | Data from one tenant silently mixed into another tenant's assessment; cross-tenant edges in identity graph; cross-tenant evidence correlation; output artifacts mixing tenant data |
-| **Security impact** | Incorrect security findings; tenant boundary violation; misleading assessment results; enterprise security决策 based on contaminated data |
+| **Security impact** | Incorrect security findings; tenant boundary violation; misleading assessment results; enterprise security decisions based on contaminated data |
 | **Existing architectural mitigation** | INV-10: Tenant boundary preservation; SourceObservation carries tenant assessment context; identity graph scoped to single tenant per run [INV-G1]; every RuleEvaluation and Finding bound to single tenant context [findings-evidence.md §12]; cross-tenant evidence correlation prohibited in V1 |
 | **Residual risk** | Cross-tenant edge prevention relies on correct SourceObservation tenant-context propagation; no formal verification of tenant-context consistency |
 | **Status** | DESIGNED / REQUIRED (architecture established; formal verification TBD) |
@@ -161,7 +161,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Attack/failure path** | Authorization denial silently converted to PASS; missing capability treated as empty/secure state; capability state lost during normalization; incomplete collection producing false assessment |
 | **Security impact** | False PASS verdicts; incomplete assessment appearing complete; security weaknesses not detected; misleading findings |
 | **Existing architectural mitigation** | INV-05: Explicit evaluation states — no silent coercion of missing capability into FAIL or PASS; INV-07: Capability awareness — unavailable capability MUST NOT automatically resolve to FAIL; CAP-002: Not-auto-FAIL for missing capabilities; rule engine validates required capabilities before evaluation [rule-engine.md §10.4]; capability state flows into evaluation through explicit mechanism, not authentication-layer override |
-| **Residual risk** | Capability-state propagation correctness depends on implementation; no formal verification that capability gaps produce NOT_EVALUATED rather than PASS |
+| **Residual risk** | Capability-state propagation correctness depends on implementation; no formal verification that capability gaps remain explicit and follow each rule's documented unavailable-input semantics rather than producing false PASS/FAIL |
 | **Status** | DESIGNED / REQUIRED (architecture established; verification TBD) |
 
 ### 10. Incomplete collection producing false PASS
@@ -193,7 +193,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Threatened asset** | Verdicts; findings/evidence; assessment integrity |
 | **Attack/failure path** | Authentication fails; system error occurs; infrastructure failure; error condition incorrectly mapped to tenant security FAIL |
 | **Security impact** | Misleading FAIL finding attributed to tenant security posture; tenant unfairly characterized as insecure; false positive security finding |
-| **Existing architectural mitigation** | INV-14: Failure transparency — failures produce explicit state; ERROR represents failure of trustworthy rule execution, not tenant security failure [rule-engine.md §4.3]; ERROR MUST NOT be converted to FAIL [findings-evidence.md §1]; collection/authentication/system failures produce NOT_EVALUATED or ERROR, not FAIL [rule-engine.md §6]; diagnostics distinct from tenant findings [findings-evidence.md §15] |
+| **Existing architectural mitigation** | INV-14: Failure transparency — operational failures remain explicit and preserve relevant context; they do not themselves select an assessment state and never silently become PASS or tenant-security FAIL. When an operational condition merely prevents assessment, applicable evaluation/rule semantics and later failure-mapping mechanics determine the legitimate handling [rule-engine.md §6]. A separate rule may explicitly evaluate the condition as assessment data under a documented requirement, in which case normal deterministic rule semantics govern its state; diagnostics remain distinct from tenant findings [findings-evidence.md §15]. |
 | **Residual risk** | Implementation must correctly distinguish infrastructure errors from security failures; error categorization depends on correct implementation |
 | **Status** | DESIGNED / REQUIRED (architecture established; implementation TBD) |
 
@@ -424,17 +424,17 @@ This section explicitly analyzes whether any plausible architecture path could c
 
 | Aspect | Assessment |
 | --- | --- |
-| **Architecture path** | Authentication fails → authentication boundary produces explicit failure category → collection cannot proceed → no assessment data collected → no RuleEvaluation with FAIL produced → system error/not-evaluated state |
-| **Analysis** | The architecture explicitly requires: (1) authentication failures produce explicit failure categories [authentication-authorization.md §12]; (2) no authentication failure may silently produce successful assessment [INV-14]; (3) collection/authentication/system failures produce NOT_EVALUATED or ERROR, not FAIL [rule-engine.md §6]; (4) ERROR represents failure of trustworthy rule execution, not tenant security failure [rule-engine.md §4.3]; (5) ERROR MUST NOT be converted to FAIL [findings-evidence.md §1]. |
-| **Classification** | **PROTECTED** — The architecture explicitly prevents authentication failure from producing tenant FAIL. Authentication failure produces ERROR or NOT_EVALUATED. |
+| **Architecture path** | Authentication fails → authentication boundary produces explicit failure category → collection cannot proceed → no assessment data collected → no fabricated RuleEvaluation or tenant-security FAIL produced |
+| **Analysis** | The architecture explicitly requires: (1) authentication failures produce explicit failure categories [authentication-authorization.md §12]; (2) no authentication failure may silently produce successful assessment [INV-14]; (3) operational failures preserve failure context and do not directly assign rule states [rule-engine.md §6]; (4) applicable evaluation/rule semantics and later failure-mapping mechanics determine whether a RuleEvaluation can legitimately be produced; (5) system diagnostics remain distinct from tenant findings [findings-evidence.md §15]. |
+| **Classification** | **PROTECTED** — The architecture explicitly prevents authentication failure from producing tenant FAIL or silent PASS without establishing a universal operational-failure-to-assessment-state mapping. |
 
 ### C. Authorization denial becoming PASS
 
 | Aspect | Assessment |
 | --- | --- |
-| **Architecture path** | Authorization denied for capability → capability state records authorization denial → capability state propagated to rule engine → rule engine checks required capabilities → rule cannot be evaluated without required capability → NOT_EVALUATED produced |
-| **Analysis** | The architecture explicitly requires: (1) authorization denial MUST NOT automatically become PASS or FAIL [authentication-authorization.md §5.2]; (2) capability state flows through explicit mechanism to rule engine; (3) rules gated on required capabilities [rule-engine.md §11]; (4) unavailable capability produces NOT_EVALUATED, not PASS [INV-05, INV-07]. |
-| **Classification** | **PROTECTED** — Authorization denial produces NOT_EVALUATED, not PASS. The architecture explicitly prevents this path. |
+| **Architecture path** | Authorization denied for capability → capability state records authorization denial → capability/failure context propagates to the rule engine → required capabilities are checked → applicable rule semantics determine whether and how evaluation proceeds |
+| **Analysis** | The architecture explicitly requires: (1) authorization denial MUST NOT automatically become PASS or FAIL [authentication-authorization.md §5.2]; (2) capability state flows through an explicit mechanism to the rule engine; (3) rules are gated on required capabilities [rule-engine.md §11]; (4) there is no universal capability-state-to-evaluation-state mapping [rule-engine.md §11.3]. |
+| **Classification** | **PROTECTED** — Authorization denial remains explicit and cannot become PASS merely because observations are absent; exact state selection remains rule-specific. |
 
 ### D. One tenant's evidence supporting another tenant
 
@@ -515,8 +515,8 @@ This section explicitly analyzes whether any plausible architecture path could c
 | ID | Adverse outcome | Classification | Reason |
 | --- | --- | --- | --- |
 | A | Incomplete collection becoming PASS | PROTECTED | Capability validation and PASS completeness requirements explicitly enforced |
-| B | Authentication failure becoming tenant FAIL | PROTECTED | Authentication failure produces ERROR/NOT_EVALUATED, not FAIL |
-| C | Authorization denial becoming PASS | PROTECTED | Authorization denial produces NOT_EVALUATED, not PASS |
+| B | Authentication failure becoming tenant FAIL | PROTECTED | Authentication failure remains explicit and does not become tenant FAIL; exact state handling is not universal |
+| C | Authorization denial becoming PASS | PROTECTED | Authorization denial remains explicit and cannot produce PASS from absent observations; state selection is rule-specific |
 | D | One tenant's evidence supporting another | PROTECTED | Tenant isolation enforced at every boundary |
 | E | Renderer changing security truth | PROTECTED | Output layer cannot alter RuleEvaluation state |
 | F | AI/LLM changing authoritative security truth | PROTECTED | AI explicitly non-authoritative; cannot modify verdicts |

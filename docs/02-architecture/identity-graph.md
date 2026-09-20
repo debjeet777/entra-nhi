@@ -85,7 +85,7 @@ Edges represent normalized relationships between nodes.
 
 | Classification | Definition | Traceability |
 | --- | --- | --- |
-| **Observed** | Directly returned by a documented source (e.g., Microsoft Graph relationship endpoint, Azure Resource Manager response). | Traceable to a specific source observation and API response. |
+| **Observed** | Directly returned by a documented source (a Microsoft Graph relationship endpoint for V1, or a future explicitly enabled optional source such as Azure Resource Manager). Optional sources are not V1 dependencies. | Traceable to a specific source observation and API response. |
 | **Derived** | Deterministically computed from observed facts by an explicitly defined derivation rule. | Traceable to the source observations and the derivation rule that produced the edge. |
 
 Derived edges MUST be:
@@ -309,7 +309,7 @@ Node(app-003, kind=ApplicationRegistration)
     capabilityState = Unavailable — authorization (for CredentialMetadata)
 ```
 
-No `hasCredential` edges are present for this node. The absence is NOT interpreted as "no credentials exist." The capability state explicitly indicates the limitation. A downstream rule evaluating credential hygiene would resolve to `NOT_EVALUATED` with a structured reason referencing the authorization-limited capability state.
+No `hasCredential` edges are present for this node. The absence is NOT interpreted as "no credentials exist." The capability state explicitly indicates the limitation. A downstream rule evaluating credential hygiene applies its documented unavailable-input behavior; the capability state alone does not universally determine an evaluation state and MUST NOT be treated as evidence for `PASS` or tenant-security `FAIL`.
 
 ---
 

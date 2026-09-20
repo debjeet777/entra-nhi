@@ -18,7 +18,7 @@ The following principles govern all authentication and authorization design:
 - **Least privilege:** Each collection capability requests only the minimum source access it requires. No silent privilege expansion.
 - **Read-only tenant operation:** EntraNHI V1 does not mutate tenant state. Read-only does not mean permissionless — authorized directory/API access may still be required. [INV-01]
 - **No remediation privileges:** Write, delete, or administrative operations are outside V1 scope. [INV-01]
-- **Explicit authorization/capability failures:** Missing authorization produces NOT_EVALUATED or ERROR, never silent PASS. [INV-05, INV-07, INV-14]
+- **Explicit authorization/capability failures:** Missing authorization remains explicit and preserves affected capability context. It never silently becomes PASS or tenant-security FAIL, and it does not itself prescribe a universal evaluation state. [INV-05, INV-07, INV-14]
 - **No silent privilege expansion:** Authentication success does not imply authorization for every capability. [INV-08]
 - **No secret persistence in assessment artifacts:** Tokens, credentials, and secrets are runtime-only and never enter normalized domain data, findings, evidence, or reports. [INV-09]
 - **Tenant context preservation:** Each execution context targets a single tenant. Data from separate tenants must never be silently mixed. [INV-10]
@@ -126,7 +126,7 @@ Authorization is evaluated per required collection capability, not as a single g
 
 ### 5.2 Authorization denial semantics
 
-Authorization denial MUST NOT automatically become a security FAIL against the tenant or assessed identity. It informs capability state and may cause downstream rules to become NOT_EVALUATED or ERROR according to rule semantics.
+Authorization denial MUST NOT automatically become a security FAIL against the tenant or assessed identity. It informs capability state and preserves failure context. The applicable evaluation and rule semantics, together with later failure-mapping mechanics, determine the legitimate downstream handling, including whether a `RuleEvaluation` is produced and, if so, its state. If a separate rule explicitly evaluates the operational condition as assessment data under a documented requirement, that rule's normal deterministic semantics govern its state.
 
 The authentication layer MUST NOT assign rule states directly. Capability state flows into the rule engine through capability detection, not through authentication-layer override.
 
@@ -385,7 +385,7 @@ This section cross-references architecture invariants. Do not modify `architectu
 | --- | --- |
 | INV-01 | Read-only tenant operation — authentication MUST NOT enable mutation |
 | INV-03 | Provider isolation — authentication/authorization boundary separated from rule engine |
-| INV-05 | Explicit evaluation states — authorization denial produces NOT_EVALUATED/ERROR, never silent PASS |
+| INV-05 | Explicit evaluation states — authorization denial remains explicit; applicable rule semantics determine any evaluation state, never silent PASS or tenant-security FAIL |
 | INV-07 | Capability awareness — authorization evaluated per capability |
 | INV-08 | Least privilege — minimum permissions for enabled capabilities only |
 | INV-09 | Secret exclusion — tokens/secrets are runtime-only, excluded from all artifacts |

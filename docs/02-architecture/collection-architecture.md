@@ -120,7 +120,7 @@ A source observation carries:
 
 ## 5. Capability detection
 
-Capability detection is a first-class architectural function. It determines what data can be collected, what is unavailable, and what is not applicable, independent of rule evaluation.
+Capability detection is a first-class architectural function. It determines what data can be collected and what is unavailable, independent of rule evaluation. Whether a rule applies is determined separately by that rule's deterministic applicability predicate.
 
 ### 5.1 Capability outcomes
 
@@ -132,11 +132,10 @@ Capability detection is capable of distinguishing:
 | Unavailable — authorization | The capability exists but the authenticated principal lacks permission to access it |
 | Unavailable — licensing/service | The required service capability or licensing tier is absent from the target environment |
 | Unsupported | The current EntraNHI implementation does not support collecting this data |
-| Not applicable | The capability or data category does not apply to this identity kind or assessment context |
 | Collection/runtime error | An error prevented determining availability or collecting data |
 | Partial collection | A subset of expected observations was collected where this is a meaningful and documented distinction |
 
-Capability detection MUST NOT convert missing data into a security finding. It informs downstream deterministic rule evaluation.
+Capability detection MUST NOT convert missing data into a security finding or assign `NOT_APPLICABLE`. It informs downstream deterministic rule evaluation while remaining distinct from rule applicability.
 
 ### 5.2 Capability granularity
 
@@ -223,7 +222,7 @@ Exact consistency policy remains TBD.
 
 ## 10. Failure model
 
-Structured collection failure categories are defined conceptually. These categories do not map directly to rule PASS/FAIL outcomes.
+Structured collection failure categories are defined conceptually. These categories do not map universally to any rule-evaluation state.
 
 | Failure category | Description |
 | --- | --- |
@@ -236,7 +235,7 @@ Structured collection failure categories are defined conceptually. These categor
 | Unsupported capability | The current EntraNHI implementation does not support this collection |
 | Cancellation | Collection was cancelled before completion |
 
-Collection failure must remain visible downstream. A failed collector MUST NOT silently return an empty successful collection. Every collection error must be recorded and propagated to the domain model capability state so the rule engine can produce NOT_EVALUATED or ERROR as appropriate.
+Collection failure must remain visible downstream. A failed collector MUST NOT silently return an empty successful collection. Every collection error must be recorded, and capability/completeness/failure context must be preserved where applicable. The applicable evaluation and rule semantics and later failure-mapping mechanics determine the legitimate handling, including whether a `RuleEvaluation` is produced and, if so, its state; some failures may prevent a legitimate `RuleEvaluation` from being constructed. A collection failure does not itself select a state and may not silently become `PASS` or tenant-security `FAIL`; if a separate rule explicitly evaluates the operational condition as assessment data under a documented requirement, that rule's normal deterministic semantics govern its state.
 
 ---
 
@@ -259,7 +258,7 @@ Normalization:
 - converts provider-specific observations into normalized domain contracts
 - preserves provenance from source observations
 - distinguishes observed information from derived information
-- preserves unavailable, unknown, and error states
+- preserves unavailable, unknown, and failure context
 - prevents provider SDK objects or resource references from entering rule contracts
 
 ### 11.3 Boundary constraint
