@@ -40,3 +40,8 @@ Current records:
 - `decisions/0005-normalized-identity-reference-contract.md`
 - `decisions/0006-normalized-identity-reference-implementation-mechanics.md`
 - `decisions/0007-canonical-evaluation-outcome-contract.md`
+- `decisions/0008-capability-and-completeness-semantic-contract.md`
+- `decisions/0009-capability-and-completeness-core-representation.md`
+- `decisions/0010-operational-failure-semantic-contract.md`
+- `decisions/0011-operational-failure-category-representation.md`
+- [Decision 0012 — PASS Precondition Proof Contract](decisions/0012-pass-eligibility-proof-contract.md)
