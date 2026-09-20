@@ -267,8 +267,11 @@ conveying, at minimum:
   explain the outcome (§9).
 - For NOT_EVALUATED / NOT_APPLICABLE / ERROR: structured reason/context
   sufficient to explain the outcome (§§6–7, §9).
-- Capability-snapshot reference: which required capability/data state
-  grounded the outcome.
+- Capability/completeness grounding is state-aligned: PASS / FAIL carry
+  direct `CapabilityObservationContext` grounding; NOT_EVALUATED carries
+  grounding in `NotEvaluatedSupport.ObservationContext` with no duplicate
+  top-level grounding; NOT_APPLICABLE and ERROR carry no capability/
+  completeness grounding at this layer.
 - Deterministic configuration / rule-set reference and, where relevant,
   the assessment-time reference value used.
 

@@ -318,12 +318,16 @@ record EvidenceReference {
 
 ## 14. Capability/completeness context
 
-1. Every finding/`RuleEvaluation` preserves the relevant
-   capability/completeness context: the capability-state references the
-   evaluation depended on (`capability-model.md` §§5–7), the rule's
-   prerequisite declarations (`capability-model.md` §8), and the
-   completeness basis for any absence-dependent reasoning
-   (`capability-model.md` §9, R-02/R-03).
+1. Capability/completeness grounding on `RuleEvaluation` is state-aligned:
+   `PASS`/`FAIL` carry direct `CapabilityObservationContext` grounding;
+   `NOT_EVALUATED` carries grounding in
+   `NotEvaluatedSupport.ObservationContext` with no duplicate top-level
+   grounding; `NOT_APPLICABLE` and `ERROR` carry no capability/completeness
+   grounding at this layer. Where grounding is carried, it preserves the
+   capability-state references the evaluation depended on
+   (`capability-model.md` §§5–7), the rule's prerequisite declarations
+   (`capability-model.md` §8), and the completeness basis for any
+   absence-dependent reasoning (`capability-model.md` §9, R-02/R-03).
 2. `PASS` resting on absence MUST record the completeness argument that
    authorized it; a reviewer MUST be able to determine WHY absence was
    treated as conclusive for that rule (§19).

@@ -45,3 +45,7 @@ Current records:
 - `decisions/0010-operational-failure-semantic-contract.md`
 - `decisions/0011-operational-failure-category-representation.md`
 - [Decision 0012 — PASS Precondition Proof Contract](decisions/0012-pass-eligibility-proof-contract.md)
+- [Decision 0013 — PASS Precondition Guard Mechanics](decisions/0013-pass-precondition-guard-mechanics.md)
+- [Decision 0014 — Evidence and Provenance Semantic Contract](decisions/0014-evidence-and-provenance-semantic-contract.md)
+- [Decision 0015 — Rule Evaluation Support Mechanics](decisions/0015-rule-evaluation-support-mechanics.md)
+- [Decision 0016 — Rule Evaluation Construction Mechanics](decisions/0016-rule-evaluation-construction-mechanics.md)

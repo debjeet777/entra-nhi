@@ -313,8 +313,8 @@ The subsequent implementation unit SHALL test at minimum:
 
 ### State/support integrity
 
-- PASS with verdict support is accepted.
-- FAIL with verdict support is accepted.
+- Non-empty verdict support satisfies the PASS support requirement, not the complete PASS `RuleEvaluation` construction contract.
+- Non-empty verdict support satisfies the FAIL support requirement, not the complete FAIL `RuleEvaluation` construction contract.
 - PASS without evidence support is rejected.
 - FAIL without evidence support is rejected.
 - NOT_EVALUATED without its structured context is rejected.
@@ -368,7 +368,7 @@ It does not claim that structural typing alone detects every secret or proves ev
 
 Decision 0015 extends but does not redefine:
 
-- Decision 0012 — canonical assessment-state mechanics;
+- Decision 0012 — PASS eligibility proof contract;
 - Decision 0013 — PASS precondition guard mechanics; and
 - Decision 0014 — evidence and provenance semantic contract.
 

@@ -452,8 +452,6 @@ The subsequent implementation unit SHALL test at minimum:
 
 ### State/support integrity
 
-- PASS with verdict support is accepted.
-- FAIL with verdict support is accepted.
 - PASS with verdict support and capability grounding is accepted.
 - FAIL with verdict support and capability grounding is accepted.
 - PASS without evidence support is rejected.
