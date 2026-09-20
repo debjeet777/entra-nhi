@@ -152,15 +152,20 @@ Tests SHALL prove at least:
 
 ### 10. Invalid enum values
 
-This decision does not define behavior for values outside the declared members
-of `CapabilityState` or `ObservationCompleteness`.
+Values outside the declared members of `CapabilityState` or
+`ObservationCompleteness` are programmer/invariant violations rather than
+ordinary domain conditions.
 
-No exception, fallback, or assessment-state behavior for invalid cast enum
-values is selected here.
+`PassPreconditionGuard.Evaluate` SHALL reject such values with
+`ArgumentOutOfRangeException`.
 
-If such handling becomes necessary, it requires separate review so programmer
-or invariant violations are not silently conflated with ordinary capability or
-completeness conditions.
+Invalid enum values SHALL NOT be converted to `Insufficient` or any other
+`PassPreconditionDisposition` and SHALL NOT be mapped to an `AssessmentState`.
+
+This fail-fast behavior is limited to invalid enum values. Canonical states such
+as `CapabilityState.Unknown` and `ObservationCompleteness.Unknown` remain
+ordinary domain conditions and SHALL be classified according to the canonical
+mapping in this decision.
 
 ## Explicitly deferred
 
