@@ -181,17 +181,17 @@ These boundaries create uncertainty:
 - API evolution may change endpoint behavior, response schemas, or feature availability across tenants.
 - EntraNHI's own implementation may lag behind available API capabilities.
 
-This uncertainty must be represented honestly. The architecture distinguishes:
+This uncertainty must be represented honestly. Capability information and rule applicability remain distinct:
 
 | Condition | Correct representation |
 | --- | --- |
-| Data was not accessible due to permissions | Capability state: Unavailable — authorization → NOT_EVALUATED |
-| Data was not accessible due to licensing | Capability state: Unavailable — licensing/service → NOT_EVALUATED |
-| Data source does not apply to this identity type | Capability state: Not applicable → NOT_APPLICABLE |
-| EntraNHI does not yet support this collection | Capability state: Unsupported → NOT_EVALUATED |
-| An error prevented collection | Capability state: Failed → ERROR or NOT_EVALUATED |
+| Data was not accessible due to permissions | Capability information records authorization-related unavailability. |
+| Data was not accessible due to licensing or service availability | Capability information records licensing/service-related unavailability where that cause is safely knowable. |
+| EntraNHI does not support the collection | Capability information records the collection as unsupported. |
+| An error prevented collection | Capability information records the collection failure. |
+| A rule deterministically does not apply to the subject or context | Rule applicability is evaluated separately and the evaluation may produce NOT_APPLICABLE with structured applicability context. |
 
-Missing capability must never silently become PASS. Missing capability must also never automatically become FAIL. The rule definition controls how capability gaps resolve to evaluation states.
+Missing capability must never silently become PASS. Missing capability must also never automatically become FAIL. The rule definition controls how capability gaps resolve to evaluation states; there is no universal capability-state-to-verdict mapping.
 
 ---
 
@@ -237,7 +237,7 @@ The assessment challenges specific to agent identities include:
 EntraNHI must handle agent identities with explicit capability awareness:
 
 - Where agent identity APIs are available and documented, collect and evaluate.
-- Where agent identity APIs are unavailable or undocumented, report NOT_EVALUATED or NOT_APPLICABLE.
+- Where agent identity capability is unavailable, unsupported, or undocumented, represent that capability information explicitly. Evaluate rule applicability separately; a rule that deterministically does not apply may produce NOT_APPLICABLE with structured applicability context.
 - Never invent Graph endpoints, permissions, or properties for agent identities.
 - Never assume agent identity relationships beyond documented and approved semantics.
 
@@ -245,7 +245,7 @@ EntraNHI must handle agent identities with explicit capability awareness:
 
 ## 12. Evidence and Explainability Problem
 
-Security findings must be explainable. A FAIL verdict without supporting evidence is not actionable. A PASS verdict without evidence may be false confidence.
+Security evaluations must be explainable. A FAIL verdict without supporting evidence is not actionable. A PASS verdict without evidence may be false confidence.
 
 Evidence and explainability challenges include:
 
@@ -254,11 +254,11 @@ Evidence and explainability challenges include:
 - **Evidence immutability.** Assessment evidence represents a point-in-time observation. Later tenant changes must not alter the meaning of an already-produced finding.
 - **Evidence minimization.** Evidence must contain only what is necessary to explain the finding, without exposing raw provider payloads or sensitive data unnecessarily.
 - **Secret exclusion.** Evidence and findings must never contain credential material, tokens, or private keys.
-- **Output representation.** Findings and evidence are canonical security data. Output renderers present them; they do not recompute or reinterpret evaluation state.
+- **Output representation.** Authoritative rule evaluations and their supporting evidence are canonical assessment data. Findings are derivative records emitted according to applicable policy, and output renderers do not recompute or reinterpret evaluation state.
 
 The findings/evidence architecture must support:
 
-- Every evaluation state (PASS, FAIL, NOT_EVALUATED, NOT_APPLICABLE, ERROR) as an auditable record.
+- Every evaluation state (PASS, FAIL, NOT_EVALUATED, NOT_APPLICABLE, ERROR) as an auditable rule-evaluation record, whether or not a finding is emitted.
 - Provenance references for all observations.
 - Structured diagnostics for non-PASS/FAIL states.
 - Output formats that preserve evaluation semantics.
@@ -291,7 +291,7 @@ Security and identity engineers need assessment output that is:
 - **Auditable.** Findings must be attributable to specific rules, evidence, and evaluation contexts.
 - **Machine-readable.** Integration with CI/CD pipelines, security dashboards, and SIEM systems requires structured output (JSON, SARIF).
 - **Human-readable.** Interactive use and report sharing require CLI and HTML output.
-- **Reproducible.** Identical inputs should produce identical findings.
+- **Reproducible.** Semantically equivalent normalized inputs, rule configuration/version, and evaluation context should produce equivalent evaluation semantics; execution timestamps need not be identical.
 - **Honest.** Incomplete assessments must not appear complete. Error states must not be hidden.
 
 The operational challenge is producing output that serves all these needs without:
@@ -333,7 +333,7 @@ EntraNHI V1 addresses the following problem scope:
 | **Output** | CLI, JSON, SARIF, HTML. |
 | **Authentication** | Interactive/delegated and non-interactive workload modes. |
 | **Execution** | Operator-run, single-tenant per assessment, no SaaS or multi-tenant service. |
-| **Write operations** | None. Read-only by default. |
+| **Write operations** | None. V1 has no write or remediation mode; local assessment artifacts such as reports and output files may be created. |
 | **AI involvement** | None in verdict determination. |
 
 ---
@@ -359,9 +359,9 @@ The following problems are explicitly out of scope for V1 and are deferred:
 
 EntraNHI's success is defined by the following characteristics:
 
-1. **Deterministic reproducibility.** Identical inputs produce identical findings across multiple assessment runs.
+1. **Deterministic reproducibility.** Semantically equivalent normalized inputs, rule configuration/version, and evaluation context produce equivalent authoritative evaluation semantics across assessment runs; byte-identical artifacts and timestamps are not required.
 
-2. **Evidence-backed verdicts.** Every PASS and FAIL finding carries traceable evidence references. No finding is unsupported.
+2. **Evidence-backed verdicts.** Every PASS and FAIL evaluation carries traceable evidence references. Any derivative finding remains grounded in its authoritative evaluation.
 
 3. **Honest uncertainty representation.** NOT_EVALUATED, NOT_APPLICABLE, and ERROR are used correctly and remain distinct. Missing data is never silently coerced into PASS or FAIL.
 

@@ -38,10 +38,11 @@ Version 1 (V1) delivers read-only, evidence-based security assessment with deter
 | Term | Definition |
 | --- | --- |
 | **Identity** | A Microsoft Entra application registration, service principal, managed identity, or agent identity examined by EntraNHI. |
-| **Evidence** | A data point collected from Microsoft Graph, Azure Resource Manager, licensed telemetry, or configuration sources that supports a verdict. |
-| **Rule** | A defined security check evaluated against collected evidence. |
+| **Evidence** | Provider-neutral support explaining why an evaluation was produced. Evidence is based on normalized, non-secret assessment facts and remains traceable through provenance toward source observations and collection context. Raw provider payloads are not automatically canonical evidence, and presentation text is not authoritative evidence. |
+| **Rule** | A defined security check evaluated against normalized assessment inputs. |
+| **Rule evaluation** | The authoritative deterministic outcome of applying a rule to a subject and evaluation context. |
 | **Verdict** | The deterministic outcome of a rule evaluation (PASS, FAIL, NOT_EVALUATED, NOT_APPLICABLE, or ERROR). |
-| **Findings** | One or more verdicts produced by rule evaluation for a given identity. |
+| **Finding** | A derivative assessment record emitted from an authoritative rule evaluation where the applicable finding-emission policy requires it. A finding cannot change or recompute the authoritative evaluation state. |
 | **Telemetry** | Data available through licensed Microsoft capabilities such as Microsoft Entra sign-in logs, audit logs, or identity insights. |
 
 ---
@@ -59,11 +60,11 @@ EntraNHI V1 MUST analyze the following identity types:
 | Managed identities | FR-003 | Full metadata collection and rule evaluation |
 | Microsoft Entra agent identities | FR-004 | Collection and rule evaluation where supported by available Microsoft Graph capabilities |
 
-### V1 evidence coverage
+### V1 assessment fact coverage
 
-For each identity type, EntraNHI V1 MUST collect and evaluate evidence in the following areas:
+For each identity type, EntraNHI V1 MUST collect and normalize non-secret assessment facts in the following areas. Rules evaluate those normalized facts, and canonical evidence supporting an evaluation is derived from them with provenance traceability:
 
-| Evidence area | Requirement ID | Description |
+| Assessment fact area | Requirement ID | Description |
 | --- | --- | --- |
 | Identity metadata | FR-010 | Display name, object ID, application ID, creation timestamp, deletion status, and available metadata |
 | Identity type | FR-011 | Classification of the identity (application registration, service principal, managed identity, agent identity) |
@@ -81,14 +82,14 @@ For each identity type, EntraNHI V1 MUST collect and evaluate evidence in the fo
 - **FR-001:** EntraNHI V1 MUST collect application registrations available through Microsoft Graph.
 - **FR-002:** EntraNHI V1 MUST collect service principals available through Microsoft Graph.
 - **FR-003:** EntraNHI V1 MUST collect managed identities represented in Microsoft Entra as service principals. Managed identities can be identified through supported Microsoft Graph service-principal metadata. Azure Resource Manager MAY be used as an optional enrichment source if future approved rules require Azure resource context, but is not mandatory for managed-identity discovery.
-- **FR-004:** EntraNHI V1 MUST collect Microsoft Entra agent identities where supported by available Microsoft Graph capabilities. Microsoft Entra agent identities are first-class agent identity resources related to, and inheriting service-principal semantics from, their associated application and service principal. Agent identity blueprints are related application-derived resources. Agent-specific collection MUST remain capability-aware. Where agent identity endpoints or data structures are unavailable, EntraNHI MUST report this explicitly using NOT_EVALUATED or NOT_APPLICABLE as appropriate. EntraNHI V1 MUST NOT invent Graph endpoints, permissions, or undocumented properties for agent identities.
+- **FR-004:** EntraNHI V1 MUST collect Microsoft Entra agent identities where supported by available Microsoft Graph capabilities. Microsoft Entra agent identities are first-class agent identity resources related to, and inheriting service-principal semantics from, their associated application and service principal. Agent identity blueprints are related application-derived resources. Agent-specific collection MUST remain capability-aware. Unavailable or unsupported collection capability MUST remain explicit; separately, a rule that deterministically does not apply to the evaluated subject or context MAY produce NOT_APPLICABLE with structured applicability context. EntraNHI V1 MUST NOT invent Graph endpoints, permissions, or undocumented properties for agent identities.
 
-### Evidence collection
+### Assessment fact collection
 
 - **FR-010:** EntraNHI V1 MUST collect identity metadata including display name, object ID, application ID, creation timestamp, deletion status, and additional metadata made available through Microsoft Graph.
 - **FR-011:** EntraNHI V1 MUST classify each identity by its Microsoft Entra identity type.
 - **FR-012:** EntraNHI V1 MUST collect ownership and accountability data where available through Microsoft Graph, including documented relationship types such as owners, sponsors, and managers. Not all relationship types exist for all identity types; EntraNHI MUST report only those relationships actually available for each identity.
-- **FR-013:** EntraNHI V1 MUST collect credential lifecycle metadata only in terms of documented, available properties: credential type, key/credential identifier, start/valid-from timestamp where available, and expiration/end timestamp where available. EntraNHI V1 MUST NOT invent credential properties not exposed by Microsoft Graph. EntraNHI V1 MUST NOT collect, store, log, or transmit credential secret values, private keys, access tokens, refresh tokens, or other authentication secrets.
+- **FR-013:** EntraNHI V1 MUST collect credential lifecycle metadata only in terms of documented, available properties: credential type, key/credential identifier, start/valid-from timestamp where available, and expiration/end timestamp where available. EntraNHI V1 MUST NOT invent credential properties not exposed by Microsoft Graph. Credential secret values, private keys, tokens, and other secret-bearing authentication material MUST NOT be collected as assessment data or included in normalized assessment data, evidence, findings, or output; transient runtime authentication handling is governed by SEC-001.
 - **FR-014:** EntraNHI V1 MUST collect application permissions, delegated permissions, and role assignments for each identity where available through Microsoft Graph.
 - **FR-015:** EntraNHI V1 MUST collect supported identity relationships including links between application registrations and service principals, service principal dependencies, and managed identity associations.
 
@@ -106,15 +107,15 @@ For each identity type, EntraNHI V1 MUST collect and evaluate evidence in the fo
 
 ### Processing
 
-- **FR-040:** EntraNHI V1 MUST operate in read-only mode by default. No write, delete, update, or administrative operations MUST be performed against Microsoft Entra or Azure Resource Manager.
+- **FR-040:** EntraNHI V1 MUST perform read-only assessment. V1 has no write or remediation mode and MUST NOT perform create, update, delete, or administrative mutation against assessed external systems. This restriction does not prohibit local creation of legitimate assessment artifacts such as reports and output files.
 - **FR-041:** EntraNHI V1 MUST handle pagination, throttling, and transient errors returned by Microsoft Graph in accordance with Microsoft Graph API guidelines.
 
 ---
 
 ## Security requirements
 
-- **SEC-001:** EntraNHI V1 MUST NOT collect, store, log, transmit, or expose credential secret values, client secrets, private keys, access tokens, refresh tokens, or recovery codes.
-- **SEC-002:** EntraNHI V1 MUST NOT commit any credential material to source control.
+- **SEC-001:** Credential secret values, client secrets, private keys, access tokens, refresh tokens, recovery codes, authentication cookies, authorization headers, and equivalent secret-bearing authentication material MUST NOT enter normalized assessment or domain data, evidence, findings, reports or output, logs, diagnostics, persistence, source control, or unrelated telemetry. Runtime authentication artifacts MAY exist transiently and be transmitted only as required within the explicitly authorized authentication and provider communication boundary. They MUST NOT be exposed as assessment data. This requirement does not prescribe an authentication flow, SDK, credential provider, token cache, or secret store.
+- **SEC-002:** EntraNHI V1 MUST NOT commit secret-bearing credential material, private keys, certificate private-key material, tokens, or secrets to source control.
 - **SEC-003:** EntraNHI V1 MUST NOT perform credential rotation, credential deletion, or credential modification of any kind.
 - **SEC-004:** EntraNHI V1 MUST NOT modify permissions, role assignments, or consent for any identity.
 - **SEC-005:** EntraNHI V1 MUST NOT modify Conditional Access policies or other authentication/authorization policy configuration.
@@ -123,7 +124,7 @@ For each identity type, EntraNHI V1 MUST collect and evaluate evidence in the fo
 - **SEC-008:** EntraNHI V1 MUST use least-privilege Microsoft Graph permissions sufficient for data collection only.
 - **SEC-009:** EntraNHI V1 MUST use sanitized placeholders, synthetic test data, or mocks in all tests and documentation. No production credentials or tenant data MUST appear in the repository.
 - **SEC-010:** EntraNHI V1 MUST NOT use AI models to generate security verdicts (PASS, FAIL, NOT_EVALUATED, NOT_APPLICABLE, or ERROR).
-- **SEC-011:** EntraNHI V1 MUST preserve the authorization boundary between the analysis platform and the target tenant. Authentication artifacts MUST NOT be persisted in source control, logs, or output files.
+- **SEC-011:** EntraNHI V1 MUST preserve the authorization boundary between the analysis platform and the target tenant. Secret-bearing authentication artifacts MUST NOT be persisted in source control, logs, or output files.
 
 ---
 
@@ -157,7 +158,7 @@ EntraNHI V1 MUST support the following output formats:
 
 ## Capability handling
 
-- **CAP-001:** EntraNHI V1 MUST represent unavailable API capabilities, unavailable licensed telemetry, insufficient permissions, or unsupported identity types explicitly in output and findings.
+- **CAP-001:** EntraNHI V1 MUST represent unavailable API capabilities, unavailable licensed telemetry, insufficient permissions, or unsupported identity types explicitly in output and, where a finding is emitted, in that finding.
 - **CAP-002:** Unavailable API capability, unavailable licensed telemetry, insufficient permission, or unsupported identity type MUST NOT automatically resolve to FAIL.
 - **CAP-003:** EntraNHI V1 MUST NOT assume all Microsoft Entra tenants expose identical APIs, licensing tiers, telemetry availability, identity types, or Microsoft Graph endpoint behavior.
 - **CAP-004:** EntraNHI V1 MUST document which Microsoft Graph capabilities, API endpoints, and licensed features are required for each rule and the expected behavior when those capabilities are absent.
@@ -171,14 +172,14 @@ Every rule evaluation by EntraNHI V1 MUST resolve to exactly one of the followin
 
 | Verdict | Requirement ID | Definition |
 | --- | --- | --- |
-| **PASS** | VERD-001 | The rule evaluated the available evidence and determined the identity satisfies the security requirement. Evidence MUST be attached. |
-| **FAIL** | VERD-002 | The rule evaluated the available evidence and determined the identity does not satisfy the security requirement. Evidence MUST be attached. |
+| **PASS** | VERD-001 | The rule evaluated the normalized assessment inputs and determined the identity satisfies the security requirement. Evidence MUST be attached. |
+| **FAIL** | VERD-002 | The rule evaluated the normalized assessment inputs and determined the identity does not satisfy the security requirement. Evidence MUST be attached. |
 | **NOT_EVALUATED** | VERD-003 | The rule could not be evaluated due to unavailable data, insufficient permissions, missing licensed telemetry, or a capability gap. Structured reason/context sufficient to explain why normal evaluation did not occur MUST be attached. |
-| **NOT_APPLICABLE** | VERD-004 | The rule does not apply to the identity type under evaluation. Structured reason/context identifying the identity type and rule applicability MUST be attached. |
+| **NOT_APPLICABLE** | VERD-004 | The rule deterministically does not apply to the subject or evaluation context. Structured reason/context identifying the subject, context, and rule applicability MUST be attached. |
 | **ERROR** | VERD-005 | An unexpected error prevented rule evaluation. Structured reason/context describing the error MUST be attached without exposing credential material. |
 
-- **VERD-006:** Each verdict MUST be deterministic. Given identical input evidence and rule configuration, EntraNHI V1 MUST produce the same verdict on every execution.
-- **VERD-007:** EntraNHI V1 MUST NOT use AI, machine learning, or probabilistic models to determine verdicts. All verdicts MUST be derived from deterministic rule logic applied to collected evidence.
+- **VERD-006:** Each verdict MUST be deterministic. Given semantically equivalent normalized assessment inputs, relevant rule configuration and version, and equivalent evaluation context, EntraNHI V1 MUST produce an equivalent authoritative evaluation outcome. Execution metadata such as timestamps does not require byte-identical report artifacts or serialization.
+- **VERD-007:** EntraNHI V1 MUST NOT use AI, machine learning, or probabilistic models to determine verdicts. All verdicts MUST be derived from deterministic rule logic applied to normalized assessment inputs.
 
 ---
 
@@ -195,7 +196,7 @@ Every rule evaluation by EntraNHI V1 MUST resolve to exactly one of the followin
 ## Constraints
 
 - **CON-001:** EntraNHI V1 MUST NOT modify any Microsoft Entra or Azure Resource Manager state.
-- **CON-002:** EntraNHI V1 MUST NOT store credentials, secrets, tokens, or certificate material in the repository, configuration files, output files, or logs.
+- **CON-002:** EntraNHI V1 MUST NOT persist or store private keys, certificate private-key material, tokens, or other secret-bearing credential or authentication material in the repository, configuration files, normalized assessment or domain data, evidence, findings, reports or output, logs, diagnostics, persistence, or unrelated telemetry. This prohibition does not apply to transient runtime authentication handling permitted by SEC-001 within the explicitly authorized authentication and provider communication boundary. Public certificate data and non-secret certificate metadata are not secrets merely because they relate to certificates. This constraint does not prescribe a secret store, token cache, OAuth flow, or SDK.
 - **CON-003:** EntraNHI V1 MUST NOT introduce new external dependencies beyond those required for Microsoft Graph communication, output formatting, and CLI operation without explicit approval.
 - **CON-004:** EntraNHI V1 MUST NOT perform autonomous or AI-driven security decisions or remediation.
 - **CON-005:** Runtime network communication used for tenant assessment MUST be limited to explicitly documented and approved service endpoints required by enabled collectors and features. EntraNHI V1 MUST NOT perform undisclosed telemetry or transmit collected tenant assessment data to unrelated third parties. Normal development, build, package, and CI network access is not restricted by this constraint.
@@ -224,13 +225,13 @@ EntraNHI V1 is considered functionally complete for initial release when the fol
 | Criterion | Requirement ID | Description |
 | --- | --- | --- |
 | Identity collection | AC-001 | EntraNHI V1 can collect application registrations, service principals, managed identities, and agent identities from a configured tenant using Microsoft Graph. |
-| Agent identity handling | AC-002 | EntraNHI V1 explicitly handles Microsoft Entra agent identities, reporting NOT_EVALUATED or NOT_APPLICABLE where the capability is unavailable. |
-| Evidence attachment | AC-003 | Every PASS or FAIL verdict includes attached evidence referencing the collected data point. |
-| Verdict determinism | AC-004 | Identical input and configuration produce identical verdicts across multiple runs. |
+| Agent identity handling | AC-002 | EntraNHI V1 explicitly reports unavailable or unsupported agent-identity capability; NOT_APPLICABLE is used only when a rule deterministically does not apply to the subject or context. |
+| Evidence attachment | AC-003 | Every PASS or FAIL verdict includes evidence based on normalized, non-secret assessment facts and traceable through provenance toward source observations and collection context. |
+| Verdict determinism | AC-004 | Semantically equivalent normalized inputs, relevant rule configuration/version, and equivalent evaluation context produce equivalent authoritative evaluation semantics across runs. |
 | Output formats | AC-005 | EntraNHI V1 produces valid CLI, JSON, SARIF, and HTML output. |
-| No credential exposure | AC-006 | No credential secret value, client secret, private key, access token, or refresh token appears in output, logs, or repository. |
+| No credential exposure | AC-006 | No credential secret value, client secret, private key, access token, refresh token, recovery code, authentication cookie, authorization header, or equivalent secret-bearing authentication material enters assessment data, output, logs, diagnostics, persistence, source control, or unrelated telemetry. |
 | No write operations | AC-007 | EntraNHI V1 performs zero write, delete, or administrative operations against Microsoft Entra or any connected service. |
-| Capability gaps documented | AC-008 | Unavailable API capabilities, missing permissions, and unsupported identity types are reported explicitly with NOT_EVALUATED or NOT_APPLICABLE. |
+| Capability gaps documented | AC-008 | Unavailable API capabilities, missing permissions, and unsupported identity types are reported explicitly; NOT_APPLICABLE is reserved for deterministic rule non-applicability. |
 | Permission documentation | AC-009 | All required Microsoft Graph permissions are documented with rationale. |
 | Test data only | AC-010 | All tests, fixtures, mocks, and documentation examples use sanitized or synthetic data. No production credentials appear in the repository. |
 | Authentication modes | AC-011 | EntraNHI V1 supports both interactive/delegated and non-interactive workload authentication modes without storing credentials in source control. |
@@ -258,10 +259,10 @@ EntraNHI V1 is considered functionally complete for initial release when the fol
 | FR-023 | Functional | No AI-generated security verdicts |
 | FR-030 | Functional | Least-privilege authentication |
 | FR-031 | Functional | Support interactive/delegated and workload authentication modes |
-| FR-040 | Functional | Read-only operation by default |
+| FR-040 | Functional | Read-only V1 assessment with no write mode |
 | FR-041 | Functional | Handle Graph pagination and throttling |
-| SEC-001 | Security | No credential secret collection or storage |
-| SEC-002 | Security | No credentials in source control |
+| SEC-001 | Security | Authentication secrets excluded from assessment surfaces |
+| SEC-002 | Security | No secret-bearing credentials in source control |
 | SEC-003 | Security | No credential rotation or modification |
 | SEC-004 | Security | No permission or role modification |
 | SEC-005 | Security | No Conditional Access modification |
@@ -302,7 +303,7 @@ EntraNHI V1 is considered functionally complete for initial release when the fol
 | ASM-004 | Assumption | Auth configured outside EntraNHI |
 | ASM-005 | Assumption | Operator has appropriate role assignments |
 | CON-001 | Constraint | No Microsoft Entra state modification |
-| CON-002 | Constraint | No credential storage anywhere |
+| CON-002 | Constraint | No secret-bearing credential or authentication material in persistent or assessment surfaces |
 | CON-003 | Constraint | No unapproved new dependencies |
 | CON-004 | Constraint | No autonomous AI decisions |
 | CON-005 | Constraint | Network communication limited to approved endpoints |

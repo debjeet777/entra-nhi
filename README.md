@@ -2,11 +2,11 @@
 
 Open-source security analysis for Microsoft Entra non-human identities, workload identities, and AI agents.
 
-> **Project status:** Early-stage design and development.
+> **Project status:** Early-stage design and implementation. Not production-ready.
 
 EntraNHI is an independent open-source project focused on helping security and identity engineers understand and assess non-human identities in Microsoft Entra.
 
-The project is being designed around evidence-driven, read-only security analysis with deterministic findings and clear handling of unavailable or insufficient telemetry.
+The project is being developed around evidence-driven, read-only V1 security assessment with deterministic evaluation and clear handling of unavailable or insufficient telemetry.
 
 ## Planned scope
 
@@ -24,7 +24,7 @@ EntraNHI is intended to analyze areas including:
 
 ## Design principles
 
-- Read-only analysis by default
+- Read-only V1 assessment with no write or remediation mode
 - Security-first architecture
 - Deterministic security rules
 - Evidence attached to findings
@@ -36,7 +36,7 @@ EntraNHI is intended to analyze areas including:
 
 ## Development
 
-Detailed requirements, architecture, threat modeling, security controls, and development documentation will be added before implementation begins.
+Detailed requirements, architecture, threat modeling, security controls, and implementation-design documentation are present, and implementation is in early progress. The project remains early-stage and is not production-ready. Documentation describing intended architecture and controls is not proof that the corresponding security behavior has been implemented or verified.
 
 ## Independence
 
