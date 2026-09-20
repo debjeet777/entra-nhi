@@ -77,7 +77,7 @@ The authentication layer establishes identity and obtains authorized access cont
 - Expose tokens to normalized domain records
 - Expose tokens to findings, evidence, or reports
 - Write secrets into logs
-- Silently persist authentication material
+- Persist authentication material outside the explicitly authorized authentication/provider communication boundary
 - Grant itself additional tenant privileges
 - Perform tenant remediation
 - Determine security PASS/FAIL findings
@@ -95,9 +95,9 @@ An abstract `AuthorizedAccessContext` conceptually carries only what runtime col
 - Authorization / capability metadata where available
 - Expiry / lifetime context where required for runtime operation
 
-### 4.1 Runtime-only security-sensitive state
+### 4.1 Authentication-boundary security-sensitive state
 
-The `AuthorizedAccessContext` is runtime-only security-sensitive state. It MUST NOT become:
+The `AuthorizedAccessContext` is security-sensitive execution state confined to the explicitly authorized authentication/provider communication boundary. It MUST NOT become:
 
 - Normalized identity data
 - Evidence
@@ -166,7 +166,7 @@ Authorization remains security-sensitive even though EntraNHI does not mutate te
 
 ## 8. Secret / Token Handling
 
-Authentication material may exist transiently in runtime memory where required by the validated authentication mechanism.
+Secret-bearing runtime authentication material MAY exist or be transmitted only inside the explicitly authorized authentication/provider communication boundary as required by the selected validated mechanism. Concrete token caching/storage and memory-protection mechanics remain TBD.
 
 ### 8.1 Exclusion from assessment artifacts
 
@@ -190,7 +190,7 @@ Authentication material MUST NOT enter:
 
 ### 8.3 Future credential/token caching
 
-If future mechanisms require local credential or token caching, that requires a separate threat-model and implementation decision. This document does not prescribe concrete secure-storage technology.
+Concrete credential or token caching, credential-store, persistence/storage, and memory-protection mechanics require separate threat-model and implementation decisions. This document does not prescribe them. Any selected mechanism MUST preserve the authentication/provider communication boundary and the exclusion requirements above.
 
 ---
 
@@ -314,7 +314,7 @@ These are domain data representing AI agent identities within the target tenant.
 
 **B. The execution identity / authentication mechanism used BY EntraNHI**
 
-This is the identity through which EntraNHI authenticates to access tenant data. It is runtime-only and never enters normalized domain data.
+This is the identity through which EntraNHI authenticates to access tenant data. Its secret-bearing authentication material remains confined to the authorized authentication/provider communication boundary and never enters normalized domain data.
 
 An assessed AI agent identity is domain data. It does not automatically become EntraNHI's authentication identity. Do not introduce special AgentIdentity authentication semantics without validated requirements.
 
@@ -388,7 +388,7 @@ This section cross-references architecture invariants. Do not modify `architectu
 | INV-05 | Explicit evaluation states — authorization denial remains explicit; applicable rule semantics determine any evaluation state, never silent PASS or tenant-security FAIL |
 | INV-07 | Capability awareness — authorization evaluated per capability |
 | INV-08 | Least privilege — minimum permissions for enabled capabilities only |
-| INV-09 | Secret exclusion — tokens/secrets are runtime-only, excluded from all artifacts |
+| INV-09 | Secret exclusion — secret-bearing authentication material is confined to the authorized authentication/provider communication boundary and excluded from assessment data and unrelated artifacts |
 | INV-10 | Tenant boundary preservation — single-tenant per execution, no silent mixing |
 | INV-14 | Failure transparency — authentication failures are explicit and distinguishable |
 | INV-15 | No undocumented capability dependency — all permissions validated against official documentation |

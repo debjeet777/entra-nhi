@@ -72,7 +72,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Threatened asset** | Authentication/access material (tokens, client secrets, private keys) |
 | **Attack/failure path** | Tokens exposed in output artifacts, logs, error messages, diagnostic dumps, process memory dumps, filesystem persistence, CI logs |
 | **Security impact** | Credential theft enabling unauthorized tenant access; lateral movement; data exfiltration from target tenant |
-| **Existing architectural mitigation** | SEC-001: No credential secret collection or storage; SEC-011: Preserve authorization boundary; INV-09: Secret exclusion — tokens/secrets are runtime-only, excluded from all artifacts; authentication boundary isolates tokens from normalized domain data, findings, evidence, logs, and reports; output renderers exclude secret material [OUT-006]; structured logging excludes credential material [NFR-004] |
+| **Existing architectural mitigation** | SEC-001: No credential secret collection or storage as assessment data; SEC-011: Preserve authorization boundary; INV-09: Secret exclusion — secret-bearing runtime authentication material is confined to the authorized authentication/provider communication boundary and excluded from normalized domain data, findings, evidence, logs, reports, and other assessment artifacts; output renderers exclude secret material [OUT-006]; structured logging excludes credential material [NFR-004] |
 | **Residual risk** | Token exposure in process memory readable by other local processes (TBD: in-memory protection); token persistence in CI environment logs if CI platform logs environment variables; exact token-zeroing behavior after use (TBD) |
 | **Status** | DESIGNED / REQUIRED (architecture established; implementation TBD for in-memory protection) |
 
@@ -117,7 +117,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Attack/failure path** | Malicious or compromised provider returns objects with forged identifiers; provider object spoofed to impersonate another identity; provider response contains objects from different tenant scope |
 | **Security impact** | Incorrect identity classification; false relationships in identity graph; misleading findings; potential for attacker-controlled identity data influencing assessment |
 | **Existing architectural mitigation** | INV-04: Normalized domain boundary — provider objects translated into stable normalized contracts; INV-03: Provider isolation — rule engine does not directly query providers; capability detection validates collection success; SourceObservation envelope carries source object reference and collection context |
-| **Residual risk** | Provider object authenticity relies on TLS transport integrity; no cryptographic verification of provider object provenance; spoofed objects within the same tenant scope may pass normalization without detection |
+| **Residual risk** | TLS protects authenticated transport/channel integrity according to the selected provider/client implementation, but transport protection alone does not prove semantic correctness or cryptographic provenance of individual provider objects; cryptographic object/provenance verification remains TBD; spoofed objects within the same tenant scope may pass normalization without detection |
 | **Status** | DESIGNED / REQUIRED (architecture established; cryptographic provenance verification TBD) |
 
 ### 6. Malformed provider data
@@ -127,7 +127,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Threatened asset** | Normalized domain data; identity graph; rule evaluation; system stability |
 | **Attack/failure path** | Provider returns malformed, oversized, or unexpected response structures; pathological data causes normalization failure or resource exhaustion; schema mismatch between expected and actual response |
 | **Security impact** | Normalization failure; rule evaluation failure; resource exhaustion; potential for incorrect evaluation if malformed data partially normalizes; denial of assessment |
-| **Existing architectural mitigation** | Response schema validation against documented expectations [trust-boundaries.md §1]; structured collection failure categories [collection-architecture.md §10]; normalization-input validation [collection-architecture.md §11.2]; ERROR verdict for unexpected evaluation failures [VERD-005]; INV-14: Failure transparency |
+| **Existing architectural mitigation** | Response schema validation against documented expectations [trust-boundaries.md §1]; structured collection failure categories [collection-architecture.md §10]; normalization-input validation [collection-architecture.md §11.2]; failure context preserved for authoritative rule/evaluation semantics without a universal state mapping [VERD-005]; INV-14: Failure transparency |
 | **Residual risk** | Exact schema validation approach is TBD; pathological data resilience testing not implemented; memory/resource bounds for large payloads TBD |
 | **Status** | DESIGNED / REQUIRED (architecture established; schema validation and resource limits TBD) |
 
@@ -171,7 +171,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Threatened asset** | PASS verdicts; findings/evidence; assessment integrity |
 | **Attack/failure path** | Collection partially fails; missing data treated as "nothing found"; rule evaluates absence of data as PASS without verifying collection completeness; partial collection not propagated to rule engine |
 | **Security impact** | Security weakness not detected; false sense of security; misleading assessment; identity with security issue receiving PASS verdict |
-| **Existing architectural mitigation** | INV-14: Failure transparency — collection failures produce explicit state; rule engine §4.1: Missing data MUST NOT automatically become PASS; PASS requires sufficient input completeness [rule-engine.md §5]; capability state propagated from collectors through SourceObservation to rule engine; rule definitions must specify required capabilities and behavior when inputs are unavailable |
+| **Existing architectural mitigation** | INV-14: Failure transparency — collection failures preserve explicit capability/completeness/failure context; rule engine §4.1: Missing data MUST NOT automatically become PASS; PASS requires sufficient input completeness [rule-engine.md §5]; capability state propagated from collectors through SourceObservation to rule engine; rule definitions must specify required capabilities and behavior when inputs are unavailable |
 | **Residual risk** | PASS semantics depend on correct rule definitions specifying completeness requirements; no automated verification that all rules correctly gate PASS on collection completeness |
 | **Status** | DESIGNED / REQUIRED (architecture established; rule-level completeness verification TBD) |
 
@@ -336,7 +336,7 @@ The approach draws on STRIDE concepts where applicable but does not force threat
 | **Threatened asset** | Assessment availability; system stability |
 | **Attack/failure path** | Provider API throttling exhausts retry budget; authentication service unavailable; pathological input causes infinite processing; resource exhaustion prevents assessment completion |
 | **Security impact** | Assessment cannot complete; operator unable to assess tenant security posture; no security findings produced |
-| **Existing architectural mitigation** | Pagination, scale, and retry with bounded behavior [collection-architecture.md §8]; structured collection failure categories [collection-architecture.md §10]; throttling/transient failure handling; cancellation support; authentication failure produces explicit state [authentication-authorization.md §12] |
+| **Existing architectural mitigation** | Pagination, scale, and retry with bounded behavior [collection-architecture.md §8]; structured collection failure categories [collection-architecture.md §10]; throttling/transient failure handling; cancellation support; authentication failure preserves explicit failure categorization and context [authentication-authorization.md §12] |
 | **Residual risk** | Exact retry counts, timeout values, and throttling thresholds are TBD; no automated DoS detection |
 | **Status** | DESIGNED / REQUIRED (operational parameters TBD) |
 
@@ -418,15 +418,15 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | Collection partially fails → capability state records failure → SourceObservation carries capability state → normalization preserves capability state → identity graph reflects capability state → rule engine validates required capabilities before evaluation → PASS requires sufficient input completeness [rule-engine.md §5] |
 | **Analysis** | The architecture explicitly requires: (1) capability state propagated from collectors through the pipeline; (2) rule engine validates required capabilities before evaluation [rule-engine.md §10.4]; (3) PASS requires sufficient input completeness defined per rule [rule-engine.md §5]; (4) missing data MUST NOT automatically become PASS [rule-engine.md §4.1]. However, the correctness of this protection depends on: each rule correctly specifying its completeness requirements; capability state being correctly propagated at each boundary; no implementation bypass of the capability-validation step. |
-| **Classification** | **PROTECTED** — The architecture explicitly requires capability validation before PASS and requires PASS to depend on input completeness. The protection is architecturally sound, though implementation correctness remains to be verified. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture requires capability validation before PASS and requires PASS to depend on input completeness. |
 
 ### B. Authentication failure becoming tenant FAIL
 
 | Aspect | Assessment |
 | --- | --- |
-| **Architecture path** | Authentication fails → authentication boundary produces explicit failure category → collection cannot proceed → no assessment data collected → no fabricated RuleEvaluation or tenant-security FAIL produced |
+| **Architecture path** | Authentication fails → authentication boundary preserves explicit failure category and context → context reaches the authoritative evaluation/run-handling boundary → applicable semantics determine whether a RuleEvaluation legitimately exists and, if so, its state |
 | **Analysis** | The architecture explicitly requires: (1) authentication failures produce explicit failure categories [authentication-authorization.md §12]; (2) no authentication failure may silently produce successful assessment [INV-14]; (3) operational failures preserve failure context and do not directly assign rule states [rule-engine.md §6]; (4) applicable evaluation/rule semantics and later failure-mapping mechanics determine whether a RuleEvaluation can legitimately be produced; (5) system diagnostics remain distinct from tenant findings [findings-evidence.md §15]. |
-| **Classification** | **PROTECTED** — The architecture explicitly prevents authentication failure from producing tenant FAIL or silent PASS without establishing a universal operational-failure-to-assessment-state mapping. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture prohibits authentication failure from automatically producing tenant FAIL or silent PASS without establishing a universal operational-failure-to-assessment-state mapping. |
 
 ### C. Authorization denial becoming PASS
 
@@ -434,7 +434,7 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | Authorization denied for capability → capability state records authorization denial → capability/failure context propagates to the rule engine → required capabilities are checked → applicable rule semantics determine whether and how evaluation proceeds |
 | **Analysis** | The architecture explicitly requires: (1) authorization denial MUST NOT automatically become PASS or FAIL [authentication-authorization.md §5.2]; (2) capability state flows through an explicit mechanism to the rule engine; (3) rules are gated on required capabilities [rule-engine.md §11]; (4) there is no universal capability-state-to-evaluation-state mapping [rule-engine.md §11.3]. |
-| **Classification** | **PROTECTED** — Authorization denial remains explicit and cannot become PASS merely because observations are absent; exact state selection remains rule-specific. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture requires authorization denial to remain explicit and prohibits PASS based merely on absent observations; exact state selection remains rule-specific. |
 
 ### D. One tenant's evidence supporting another tenant
 
@@ -442,7 +442,7 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | Tenant A data collected → SourceObservation carries tenant A context → normalized to tenant A scope → identity graph scoped to tenant A → RuleEvaluation bound to tenant A → Finding bound to tenant A → output scoped to tenant A |
 | **Analysis** | The architecture explicitly requires: (1) tenant boundary preservation [INV-10]; (2) SourceObservation carries tenant assessment context; (3) identity graph scoped to single tenant [INV-G1]; (4) every RuleEvaluation and Finding bound to single tenant context [findings-evidence.md §12]; (5) cross-tenant evidence correlation prohibited in V1. |
-| **Classification** | **PROTECTED** — The architecture explicitly prevents cross-tenant data mixing at every boundary. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture prohibits cross-tenant data mixing at every boundary. |
 
 ### E. Renderer changing security truth
 
@@ -450,7 +450,7 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | RuleEvaluation produced → findings/evidence layer transforms to Finding → canonical output model → renderer transforms to format-specific output |
 | **Analysis** | The architecture explicitly requires: (1) output layer MUST NOT alter RuleEvaluation state [output-architecture.md §1]; (2) all five evaluation states preserved and distinguishable [output-architecture.md §3]; (3) renderers MUST NOT rerun rules, reinterpret verdicts, or fabricate evidence [output-architecture.md §1]; (4) core/output separation [INV-12]; (5) renderer failure is system diagnostic, not tenant finding. |
-| **Classification** | **PROTECTED** — The architecture explicitly prevents renderers from altering security truth. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture prohibits renderers from altering authoritative security truth. |
 
 ### F. AI/LLM changing authoritative security truth
 
@@ -458,7 +458,7 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | Deterministic assessment pipeline produces RuleEvaluation → AI/LLM receives results for explanation → AI generates explanatory text → explanatory text is non-authoritative, downstream only |
 | **Analysis** | The architecture explicitly requires: (1) AI/LLM cannot determine or modify rule outcomes [INV-13]; (2) AI availability not required for core assessment correctness; (3) AI limited to post-assessment explanation, must not alter verdicts [INV-13]; (4) AI MUST NOT create/modify evidence [findings-evidence.md §21]; (5) AI-generated explanation clearly downstream/non-authoritative. |
-| **Classification** | **PROTECTED** — AI/LLM is explicitly positioned as non-authoritative and cannot modify assessment truth. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture requires AI/LLM to remain non-authoritative and prohibits it from modifying assessment truth. |
 
 ### G. Secret/token entering normalized data/evidence/output
 
@@ -466,7 +466,7 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | Authentication obtains tokens → tokens exist in AuthorizedAccessContext → collectors consume authorized context → normalization excludes tokens → domain model excludes tokens → findings/evidence exclude tokens → output excludes tokens |
 | **Analysis** | The architecture explicitly requires: (1) INV-09: Secret exclusion — tokens never enter findings, evidence, logs, reports, or persisted artifacts; (2) authentication boundary isolates tokens from all downstream artifacts; (3) SourceObservation MUST NOT contain authentication tokens [collection-architecture.md §4.2]; (4) rule engine MUST NOT store authentication secrets as evidence [rule-engine.md §15.2]; (5) output excludes secret material [OUT-006]; (6) logging excludes credential material [NFR-004]. |
-| **Classification** | **PROTECTED** — Secret exclusion is enforced at every boundary. The architecture explicitly prevents secret material from entering normalized data, evidence, or output. However, in-memory token protection is TBD. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture requires secret exclusion at every boundary and prohibits secret material from entering normalized data, evidence, output, or unrelated artifacts. Concrete token caching/storage and in-memory protection remain TBD. |
 
 ### H. Provider object bypassing normalization into rule logic
 
@@ -474,7 +474,7 @@ This section explicitly analyzes whether any plausible architecture path could c
 | --- | --- |
 | **Architecture path** | Provider returns objects → collectors acquire SourceObservation → normalization translates to domain contracts → identity graph projects from normalized data → rule engine consumes normalized contracts |
 | **Analysis** | The architecture explicitly requires: (1) INV-03: Provider isolation — rule engine MUST NOT query providers; (2) INV-04: Normalized domain boundary — provider representation MUST NOT leak into rule contracts; (3) INV-G7: Rules consume normalized contracts only; (4) rule engine MUST NOT use provider SDK types, raw payloads, or API responses [rule-engine.md §2.2, §2.3]. |
-| **Classification** | **PROTECTED** — The architecture explicitly enforces provider isolation through the normalized domain boundary. Provider objects cannot reach rule logic. |
+| **Classification** | **ARCHITECTURALLY PROTECTED / IMPLEMENTATION VERIFICATION REQUIRED** — The architecture requires provider isolation through the normalized domain boundary and prohibits provider objects from reaching rule logic. |
 
 ### I. Partial output artifact appearing complete
 
@@ -514,14 +514,14 @@ This section explicitly analyzes whether any plausible architecture path could c
 
 | ID | Adverse outcome | Classification | Reason |
 | --- | --- | --- | --- |
-| A | Incomplete collection becoming PASS | PROTECTED | Capability validation and PASS completeness requirements explicitly enforced |
-| B | Authentication failure becoming tenant FAIL | PROTECTED | Authentication failure remains explicit and does not become tenant FAIL; exact state handling is not universal |
-| C | Authorization denial becoming PASS | PROTECTED | Authorization denial remains explicit and cannot produce PASS from absent observations; state selection is rule-specific |
-| D | One tenant's evidence supporting another | PROTECTED | Tenant isolation enforced at every boundary |
-| E | Renderer changing security truth | PROTECTED | Output layer cannot alter RuleEvaluation state |
-| F | AI/LLM changing authoritative security truth | PROTECTED | AI explicitly non-authoritative; cannot modify verdicts |
-| G | Secret/token entering normalized data/evidence/output | PROTECTED | Secret exclusion enforced at every boundary |
-| H | Provider object bypassing normalization into rule logic | PROTECTED | Provider isolation through normalized domain boundary |
+| A | Incomplete collection becoming PASS | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires capability validation and PASS completeness |
+| B | Authentication failure becoming tenant FAIL | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires explicit authentication failure context and prohibits automatic tenant FAIL; exact state handling is not universal |
+| C | Authorization denial becoming PASS | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires explicit authorization-denial context and prohibits PASS from absent observations; state selection is rule-specific |
+| D | One tenant's evidence supporting another | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires tenant isolation at every boundary |
+| E | Renderer changing security truth | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture prohibits the output layer from altering RuleEvaluation state |
+| F | AI/LLM changing authoritative security truth | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires AI to remain non-authoritative and prohibits verdict modification |
+| G | Secret/token entering normalized data/evidence/output | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires secret exclusion at every boundary |
+| H | Provider object bypassing normalization into rule logic | ARCHITECTURALLY PROTECTED / VERIFICATION REQUIRED | Architecture requires provider isolation through the normalized domain boundary |
 | I | Partial output artifact appearing complete | AMBIGUOUS | Architecturally required but implementation TBD |
 | J | Resource exhaustion appearing as successful assessment | AMBIGUOUS | Architecturally required to fail visibly but limits TBD |
 | K | Missing provenance being silently fabricated | AMBIGUOUS | Prohibited but no cryptographic verification yet |

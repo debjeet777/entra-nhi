@@ -77,7 +77,7 @@ Test configurations, test authentication contexts, and test fixtures MUST NOT we
 
 ### 1.15 Security properties require explicit verification
 
-Security-critical properties MUST have explicit test verification. Absence of a test is not evidence of security. Architectural documentation of a control is DESIGNED / REQUIRED; a passing test is IMPLEMENTED / VERIFIED.
+Security-critical properties MUST have explicit test verification. Absence of a test is not evidence of security. Architectural documentation of a control establishes DESIGNED / REQUIRED only. Successful tests provide implementation-verification evidence only when they exercise the implemented control at the required boundary and scope. A property MUST NOT be classified VERIFIED merely because its architecture is documented or an unrelated or insufficient test passes.
 
 ---
 
@@ -351,7 +351,7 @@ Tests MUST verify:
 - Authorization denial cannot become PASS
 - Authentication/system failure cannot become tenant FAIL
 - Credentials/tokens cannot enter normalized state, graph, findings, evidence, reports, or logs
-- AuthorizedAccessContext remains runtime-only security-sensitive state
+- AuthorizedAccessContext remains security-sensitive state confined to the authorized authentication/provider communication boundary
 
 Exact OAuth/OIDC flows and exact Microsoft permissions remain TBD.
 
@@ -700,7 +700,7 @@ Define an explicit adversarial suite corresponding to the threat model. Each tes
 | Evidence manipulation | Threat 13 | Attempt to modify evidence references; verify integrity |
 | Rule/config tampering | Threat 15 | Inject modified rule configuration; verify detection and safe failure |
 | False PASS | Threat 10, 11 (Incomplete collection, authorization denial) | Execute every false-PASS attack path; verify a fail-safe non-PASS outcome |
-| False FAIL | Threat 12 (Auth failure -> tenant FAIL) | Execute every false-FAIL attack path; verify correct non-FAIL state |
+| False FAIL | Threat 12 (Auth failure -> tenant FAIL) | Execute every false-FAIL attack path; verify it cannot automatically become tenant-security FAIL and that any RuleEvaluation follows applicable semantics |
 | Renderer state reinterpretation | Threat 16 (Renderer changing security meaning) | Verify renderers cannot alter evaluation state |
 | XSS | Threat 17 (HTML/XSS injection) | Inject HTML/JS payloads into tenant strings; verify safe encoding |
 | Terminal injection | Threat 18 (Terminal/control-character injection) | Inject ANSI/control characters; verify safe handling |
@@ -851,21 +851,21 @@ A release MUST NOT be considered security-verified merely because it compiles. B
 
 | Property | Gate requirement |
 | --- | --- |
-| Read-only behavior | VERIFIED that no write/delete/administrative operations occur against provider APIs |
-| Least privilege | VERIFIED that authentication requests only minimum required permissions |
-| Tenant isolation | VERIFIED that cross-tenant data mixing does not occur at any pipeline stage |
-| Secret exclusion | VERIFIED that no credential material enters output, logs, evidence, or normalized state |
-| Deterministic rule states | VERIFIED that identical inputs produce identical evaluation outcomes |
-| False-PASS prevention | VERIFIED that every false-PASS attack path produces a fail-safe non-PASS outcome |
-| False-FAIL prevention | VERIFIED that every false-FAIL attack path produces a fail-safe non-FAIL outcome |
-| Capability-aware semantics | VERIFIED that missing capability remains explicit, is distinct from applicability, and is handled by documented rule semantics without automatically producing PASS or FAIL |
-| Provenance/evidence integrity | VERIFIED that evidence traces to source observations; no fabrication |
-| Renderer non-authority | VERIFIED that output renderers cannot alter evaluation state |
-| Output injection resistance | VERIFIED that tenant strings are safely encoded in all output formats |
-| Filesystem safety | VERIFIED that path traversal and unsafe overwrite are prevented |
-| Bounded processing | VERIFIED that pathological input produces visible failure, not silent success |
-| Cancellation/failure visibility | VERIFIED that cancellation and failure are visible, not silent success |
-| CI/supply-chain controls | VERIFIED that CI implements required security controls (once implemented) |
+| Read-only behavior | Verification evidence establishes that no write/delete/administrative operations occur against provider APIs |
+| Least privilege | Verification evidence establishes that authentication requests only minimum required permissions |
+| Tenant isolation | Verification evidence establishes that cross-tenant data mixing does not occur at any pipeline stage |
+| Secret exclusion | Verification evidence establishes that no credential material enters output, logs, evidence, normalized state, or unrelated artifacts |
+| Deterministic rule states | Verification evidence establishes that identical inputs produce identical evaluation outcomes |
+| False-PASS prevention | Verification evidence establishes that every false-PASS attack path cannot authorize unjustified PASS |
+| False-FAIL prevention | Verification evidence establishes that operational/capability failures cannot automatically become affirmative tenant-security FAIL and that rule-specific behavior follows authoritative semantics |
+| Capability-aware semantics | Verification evidence establishes that missing capability remains explicit, is distinct from applicability, cannot authorize unjustified PASS or automatic tenant-security FAIL, and follows documented rule/context semantics |
+| Provenance/evidence integrity | Verification evidence establishes that evidence traces to source observations and is not fabricated |
+| Renderer non-authority | Verification evidence establishes that output renderers cannot alter evaluation state |
+| Output injection resistance | Verification evidence establishes that tenant strings are safely encoded in all output formats |
+| Filesystem safety | Verification evidence establishes that path traversal and unsafe overwrite are prevented |
+| Bounded processing | Verification evidence establishes that pathological input produces visible failure, not silent success |
+| Cancellation/failure visibility | Verification evidence establishes that cancellation and failure are visible, not silent success |
+| CI/supply-chain controls | Once implemented, verification evidence establishes that CI implements required security controls |
 
 ### 20.3 Gate semantics
 

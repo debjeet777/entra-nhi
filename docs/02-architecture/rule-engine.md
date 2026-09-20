@@ -126,7 +126,7 @@ The following fail-safe rules are security-critical and must be enforced by the 
 - Missing data must not automatically become FAIL.
 - FAIL requires affirmative deterministic evidence that the rule's documented failure condition is satisfied.
 
-This distinction is security-critical. Missing data is not evidence of failure; it is an absence of evidence. The rule definition must determine whether absence under verified complete collection is PASS or NOT_EVALUATED.
+This distinction is security-critical. Missing data is not evidence of failure; it is an absence of evidence. The rule definition and verified collection completeness determine the legitimate evaluation behavior; missing or incomplete evidence cannot authorize PASS or automatically produce tenant-security FAIL.
 
 ### 4.3 ERROR is not FAIL
 
@@ -532,7 +532,7 @@ The following summarizes the conceptual pipeline:
 4.  Required-capability validation
 5.  Required-input validation
 6.  Deterministic evaluation
-7.  Evaluation-state assignment -> PASS / FAIL / ERROR
+7.  Evaluation-state assignment -> exactly one of PASS / FAIL / NOT_EVALUATED / NOT_APPLICABLE / ERROR according to applicable rule semantics
 8.  Evidence reference construction / handoff
 9.  Diagnostic / error capture
 10. Result aggregation
